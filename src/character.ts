@@ -4,7 +4,7 @@ export const character: Character = {
     // ...defaultCharacter,
     name: "Eliza",
     plugins: [],
-    clients: [],
+    clients: [ Clients.DISCORD ],
     // modelProvider: ModelProviderName.OPENAI,
     modelProvider: ModelProviderName.GROK,
     settings: {
