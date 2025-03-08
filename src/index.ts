@@ -23,6 +23,30 @@ import {
   parseArguments,
 } from "./config/index.ts";
 import { initializeDatabase } from "./database/index.ts";
+import { customActions, configureSummarizer, triggerSummarize } from "./actions/index.ts";
+import { isSummaryCommand } from "./actions/customSummarize.ts";
+
+// Configure the summarizer with our desired settings
+configureSummarizer({
+  // Specify source channels to summarize if desired (leave empty to only use current channel)
+  sourceChannels: [ 
+    "c34974b6-55a1-0d33-94eb-3dd3e3c255ca", // The specific channel ID
+    "0cce53d1-f72e-0179-a001-38ff3fea9832"  // Also try the current room ID we've seen in logs
+  ],
+  // Set default lookback period in hours - increasing to capture more messages
+  defaultLookbackHours: 72,  // Changed from 6 to 72 (3 days)
+  // Set maximum lookback period in hours
+  maxLookbackHours: 720  // Changed from 48 to 720 (30 days)
+});
+
+// Enhanced debug logging for custom actions
+console.log("Custom actions being registered:", 
+  customActions.map(a => ({
+    name: a.name, 
+    hasValidate: !!a.validate, 
+    hasHandler: !!a.handler
+  }))
+);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,7 +73,10 @@ export function createAgent(
 
   nodePlugin ??= createNodePlugin();
 
-  return new AgentRuntime({
+  // Log the custom actions being registered
+  console.log("Registering custom actions:", customActions.map(action => action.name));
+
+  const agentRuntime = new AgentRuntime({
     databaseAdapter: db,
     token,
     modelProvider: character.modelProvider,
@@ -61,11 +88,17 @@ export function createAgent(
       character.settings?.secrets?.WALLET_PUBLIC_KEY ? solanaPlugin : null,
     ].filter(Boolean),
     providers: [],
-    actions: [],
+    actions: customActions, // Register our custom actions
     services: [],
     managers: [],
     cacheManager: cache,
   });
+
+  // Verify that our actions are registered
+  console.log("Runtime created with actions:", 
+    agentRuntime.actions ? agentRuntime.actions.map(a => a.name) : "No actions available");
+
+  return agentRuntime;
 }
 
 async function startAgent(character: Character, directClient: DirectClient) {
