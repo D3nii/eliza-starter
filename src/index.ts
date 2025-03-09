@@ -24,14 +24,15 @@ import {
 } from "./config/index.ts";
 import { initializeDatabase } from "./database/index.ts";
 import { customActions, configureSummarizer, triggerSummarize } from "./actions/index.ts";
-import { isSummaryCommand } from "./actions/customSummarize.ts";
+import { discordFetcherPlugin } from "../plugins/discordFetcher/src/index.ts";
 
 // Configure the summarizer with our desired settings
 configureSummarizer({
   // Specify source channels to summarize if desired (leave empty to only use current channel)
   sourceChannels: [ 
-    "c34974b6-55a1-0d33-94eb-3dd3e3c255ca", // The specific channel ID
-    "0cce53d1-f72e-0179-a001-38ff3fea9832"  // Also try the current room ID we've seen in logs
+    // "c34974b6-55a1-0d33-94eb-3dd3e3c255ca", // The specific channel ID
+    // "0cce53d1-f72e-0179-a001-38ff3fea9832"  // Also try the current room ID we've seen in logs
+    "1345157213123121182"  // Also try the current room ID we've seen in logs
   ],
   // Set default lookback period in hours - increasing to capture more messages
   defaultLookbackHours: 72,  // Changed from 6 to 72 (3 days)
@@ -86,9 +87,11 @@ export function createAgent(
       bootstrapPlugin,
       nodePlugin,
       character.settings?.secrets?.WALLET_PUBLIC_KEY ? solanaPlugin : null,
+      discordFetcherPlugin,
     ].filter(Boolean),
     providers: [],
-    actions: customActions, // Register our custom actions
+    // actions: customActions, // Register our custom actions
+    actions: [], // Register our custom actions
     services: [],
     managers: [],
     cacheManager: cache,

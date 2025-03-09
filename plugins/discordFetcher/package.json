@@ -1,0 +1,10 @@
+{
+  "name": "discord-fetcher-plugin",
+  "version": "1.0.0",
+  "description": "Discord Fetcher Plugin for ElizaOS - Fetch message history for different time periods",
+  "main": "src/index.ts",
+  "type": "module",
+  "dependencies": {
+    "discord.js": "^14.18.0"
+  }
+}
