@@ -22,7 +22,10 @@ const config = {
     },
     // Maximum number of messages to fetch
     maxMessages: 10000,
-    sourceChannelId: "1345157213123121182",
+    sourceChannelIDs: [
+        "1345157213123121182",
+        "1347292341316096061"
+    ],
     targetChannelId: "1345062534125719562",
     defaultPrompt: "Analyze the Discord conversation and provide a summary of the conversation. Be sure to include all the details of the conversation, including the names of the people involved and the content of the messages. \n\n{{messages}}"
 };
@@ -75,12 +78,12 @@ function parseTimePeriod(text) {
     // Check for specific time periods
     for (const [period, hours] of Object.entries(config.timePeriods)) {
         if (lowerText.includes(period)) {
-            return hours;
+            return { hours, display: period };
         }
     }
 
     // Default to 24 hours (1 day) if no specific period is mentioned
-    return config.timePeriods['1d'];
+    return { hours: config.timePeriods['1d'], display: '1d' };
 }
 
 /**
@@ -164,9 +167,10 @@ async function processWithAI(formattedMessages, runtime, customPrompt = null) {
  * @param {Object} message - The triggering message
  * @param {number} hours - Hours to look back
  * @param {string} channelId - Discord channel ID
+ * @param {Object} runtime - ElizaOS runtime
  * @returns {Promise<Array>} - Array of messages
  */
-async function fetchDiscordHistory(message, hours, channelId) {
+async function fetchDiscordHistory(message, hours, channelId, runtime) {
     try {
         // Wait for client to be ready
         if (!isClientReady) {
@@ -193,7 +197,7 @@ async function fetchDiscordHistory(message, hours, channelId) {
         }
 
         // Use provided channelId or default to a specific channel
-        const targetChannelId = channelId || config.sourceChannelId;
+        const targetChannelId = channelId || config.sourceChannelIDs[0];
 
         console.log(`Fetching Discord history for channel ${targetChannelId} for the last ${hours} hours`);
 
@@ -352,6 +356,7 @@ export const discordHistoryAction = {
         "FETCH_MESSAGES"
     ],
     description: "Fetches Discord message history for a specified time period (4h, 1d, 1w, 1month)",
+    pattern: /(?:analyze|summarize|fetch|get|show|give me|what's in|look at).*(?:discord|conversation|chat|message|channel).*(?:history|messages|chat|conversation).*(?:from|for|in|over|during|the last|past)?\s*(?:(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(?:4h|1d|1w|1month))/i,
 
     validate: async (runtime, message, _state) => {
         try {
@@ -424,20 +429,25 @@ export const discordHistoryAction = {
             }
 
             // Parse the time period from the message
-            const hours = parseTimePeriod(message.content.text);
+            const timePeriod = parseTimePeriod(message.content.text);
 
-            // Fetch the message history
-            const messages = await fetchDiscordHistory(message, hours, config.sourceChannelId);
-            console.log(`Fetched ${messages.length} messages`);
+            // Fetch the message history from all source channels
+            let allMessages = [];
+            for (const channelId of config.sourceChannelIDs) {
+                const channelMessages = await fetchDiscordHistory(message, timePeriod.hours, channelId, runtime);
+                console.log(`Fetched ${channelMessages.length} messages from channel ${channelId}`);
+                allMessages = allMessages.concat(channelMessages);
+            }
+            console.log(`Fetched ${allMessages.length} messages in total`);
 
             // Format the message history
-            const formattedHistory = formatMessageHistory(messages);
+            const formattedMessages = formatMessageHistory(allMessages);
 
             // Process with AI if needed
-            let finalResponse = formattedHistory;
+            let finalResponse = formattedMessages;
             console.log("Processing with AI...");
             try {
-                const aiResponse = await processWithAI(formattedHistory, runtime);
+                const aiResponse = await processWithAI(formattedMessages, runtime);
                 if (aiResponse) {
                     finalResponse = aiResponse;
                 }
@@ -445,9 +455,12 @@ export const discordHistoryAction = {
                 console.error("Error processing with AI:", aiError);
             }
 
-            // Send the response
+            // Prepare the final response
+            const finalResponseText = `Here's the Discord message history analysis for the last ${timePeriod.display}:\n\n${finalResponse}`;
+
+            // Create the response object
             const response = {
-                text: finalResponse,
+                text: finalResponseText,
                 action: "DISCORD_HISTORY_RESPONSE",
                 source: message.content?.source || "unknown"
             };
