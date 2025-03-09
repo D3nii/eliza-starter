@@ -15,6 +15,7 @@ import { generateText, composeContext, ModelClass } from '@elizaos/core';
 const config = {
     // Default time periods in hours
     timePeriods: {
+        '1h': 1,
         '4h': 4,
         '1d': 24,
         '1w': 168,     // 7 days * 24 hours
@@ -160,6 +161,97 @@ async function processWithAI(formattedMessages, runtime, customPrompt = null) {
         console.error("Error processing with AI:", error);
         return "Error: Unable to process messages with AI. Please check the logs for details.";
     }
+}
+
+/**
+ * Send a message to a Discord channel with automatic chunking for long messages
+ * @param {string|Object} content - The message content to send
+ * @param {string} channelId - Discord channel ID
+ * @param {Array} [files] - Optional array of file attachments
+ * @returns {Promise<Array>} - Array of sent message objects
+ */
+async function sendDiscordMessage(content, channelId, files = null) {
+    const channel = client.channels.cache.get(channelId);
+    if (!channel) {
+        console.error("Channel not found:", channelId);
+        return [];
+    }
+
+    try {
+        // Define maximum Discord message length
+        const MAX_MESSAGE_LENGTH = 2000;
+
+        // Split the message into chunks if it's a string
+        const messageText = typeof content === 'object' ? content.text || '' : content;
+        const messages = splitMessage(messageText, MAX_MESSAGE_LENGTH);
+        const sentMessages = [];
+
+        // Send each chunk as a separate message
+        for (let i = 0; i < messages.length; i++) {
+            const message = messages[i];
+            if (message.trim().length > 0 || (i === messages.length - 1 && files)) {
+                const options = {
+                    content: message.trim()
+                };
+
+                // Add files to the last message chunk
+                if (i === messages.length - 1 && files) {
+                    options.files = files;
+                }
+
+                const sentMessage = await channel.send(options);
+                sentMessages.push(sentMessage);
+            }
+        }
+
+        return sentMessages;
+    } catch (error) {
+        console.error("Error sending Discord message:", error);
+        return [];
+    }
+}
+
+/**
+ * Split a message into chunks that fit within Discord's message length limit
+ * @param {string} content - The message content to split
+ * @param {number} maxLength - Maximum length of each chunk
+ * @returns {Array<string>} - Array of message chunks
+ */
+function splitMessage(content, maxLength) {
+    if (!content) return [''];
+
+    const messages = [];
+    let currentMessage = "";
+
+    // Split by newlines first
+    const rawLines = content.split("\n");
+
+    // Process each line, further splitting if a line exceeds max length
+    const lines = rawLines.flatMap(line => {
+        const chunks = [];
+        while (line.length > maxLength) {
+            chunks.push(line.slice(0, maxLength));
+            line = line.slice(maxLength);
+        }
+        chunks.push(line);
+        return chunks;
+    });
+
+    // Combine lines into messages that fit within the limit
+    for (const line of lines) {
+        if (currentMessage.length + line.length + 1 > maxLength) {
+            messages.push(currentMessage.trim());
+            currentMessage = "";
+        }
+        currentMessage += line + "\n";
+    }
+
+    // Add the last message if it has content
+    if (currentMessage.trim().length > 0) {
+        messages.push(currentMessage.trim());
+    }
+
+    return messages;
 }
 
 /**
@@ -355,20 +447,23 @@ export const discordHistoryAction = {
         "CHAT_HISTORY",
         "FETCH_MESSAGES"
     ],
-    description: "Fetches Discord message history for a specified time period (4h, 1d, 1w, 1month)",
-    pattern: /(?:analyze|summarize|fetch|get|show|give me|what's in|look at).*(?:discord|conversation|chat|message|channel).*(?:history|messages|chat|conversation).*(?:from|for|in|over|during|the last|past)?\s*(?:(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(?:4h|1d|1w|1month))/i,
+    description: "Fetches Discord message history for a specified time period (1h, 4h, 1d, 1w, 1month)",
+    pattern: /(?:analyze|summarize|fetch|get|show|give me|what's in|look at).*(?:discord|conversation|chat|message|channel).*(?:history|messages|chat|conversation).*(?:from|for|in|over|during|the last|past)?\s*(?:(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(?:1h|4h|1d|1w|1month))/i,
 
     validate: async (runtime, message, _state) => {
+        console.log("DISCORD_MESSAGE_HISTORY validate called with message:", JSON.stringify(message, null, 2));
         try {
             // Skip if there's no text content
             if (!message.content?.text) {
+                console.log("No text content in message");
                 return false;
             }
 
             const text = message.content.text.toLowerCase().trim();
+            console.log("Processing text:", text);
 
             if (text.toLowerCase().includes('big brains do the thing')) {
-                console.log("Big Brains Do the thing");
+                console.log("Big Brains Do the thing trigger detected");
                 return true;
             }
 
@@ -394,9 +489,11 @@ export const discordHistoryAction = {
 
             // If we should handle this, explicitly return true
             if (shouldHandle) {
+                console.log("Should handle this message based on analysis request");
                 return true;
             }
 
+            console.log("Message doesn't match criteria for handling");
             return false;
         } catch (error) {
             console.error("Error in DISCORD_ANALYZE validate:", error);
@@ -465,6 +562,12 @@ export const discordHistoryAction = {
                 source: message.content?.source || "unknown"
             };
 
+            // If messages is not from Discord, send the response to the target channel
+            if (message.content?.source !== "discord") {
+                console.log("Sending response to target channel:", config.targetChannelId);
+                await sendDiscordMessage(finalResponseText, config.targetChannelId);
+            }
+
             await callback(response);
             return response;
         } catch (error) {
@@ -509,3 +612,4 @@ export const discordHistoryAction = {
 // Export the actions and evaluators
 export const actions = [discordHistoryAction];
 export const evaluators = [];
+export { discordHistoryAction };
