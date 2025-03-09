@@ -23,31 +23,7 @@ import {
   parseArguments,
 } from "./config/index.ts";
 import { initializeDatabase } from "./database/index.ts";
-import { customActions, configureSummarizer, triggerSummarize } from "./actions/index.ts";
-import { discordFetcherPlugin } from "../plugins/discordFetcher/src/index.ts";
-
-// Configure the summarizer with our desired settings
-configureSummarizer({
-  // Specify source channels to summarize if desired (leave empty to only use current channel)
-  sourceChannels: [ 
-    // "c34974b6-55a1-0d33-94eb-3dd3e3c255ca", // The specific channel ID
-    // "0cce53d1-f72e-0179-a001-38ff3fea9832"  // Also try the current room ID we've seen in logs
-    "1345157213123121182"  // Also try the current room ID we've seen in logs
-  ],
-  // Set default lookback period in hours - increasing to capture more messages
-  defaultLookbackHours: 72,  // Changed from 6 to 72 (3 days)
-  // Set maximum lookback period in hours
-  maxLookbackHours: 720  // Changed from 48 to 720 (30 days)
-});
-
-// Enhanced debug logging for custom actions
-console.log("Custom actions being registered:", 
-  customActions.map(a => ({
-    name: a.name, 
-    hasValidate: !!a.validate, 
-    hasHandler: !!a.handler
-  }))
-);
+import { discordFetcherPlugin } from "../plugins/Tweetz/src/index.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,9 +50,6 @@ export function createAgent(
 
   nodePlugin ??= createNodePlugin();
 
-  // Log the custom actions being registered
-  console.log("Registering custom actions:", customActions.map(action => action.name));
-
   const agentRuntime = new AgentRuntime({
     databaseAdapter: db,
     token,
@@ -90,16 +63,11 @@ export function createAgent(
       discordFetcherPlugin,
     ].filter(Boolean),
     providers: [],
-    // actions: customActions, // Register our custom actions
-    actions: [], // Register our custom actions
+    actions: [],
     services: [],
     managers: [],
     cacheManager: cache,
   });
-
-  // Verify that our actions are registered
-  console.log("Runtime created with actions:", 
-    agentRuntime.actions ? agentRuntime.actions.map(a => a.name) : "No actions available");
 
   return agentRuntime;
 }
