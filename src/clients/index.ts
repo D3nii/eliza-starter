@@ -3,6 +3,7 @@ import { DiscordClientInterface } from "@elizaos/client-discord";
 import { TelegramClientInterface } from "@elizaos/client-telegram";
 import { TwitterClientInterface } from "@elizaos/client-twitter";
 import { Character, IAgentRuntime } from "@elizaos/core";
+import { CustomAutoClientInterface } from "./auto.ts";
 
 export async function initializeClients(
   character: Character,
@@ -12,7 +13,7 @@ export async function initializeClients(
   const clientTypes = character.clients?.map((str) => str.toLowerCase()) || [];
 
   if (clientTypes.includes("auto")) {
-    const autoClient = await AutoClientInterface.start(runtime);
+    const autoClient = await CustomAutoClientInterface.start(runtime);
     if (autoClient) clients.push(autoClient);
   }
 
