@@ -15070,7 +15070,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.0.5':
     dependencies:
-      '@types/node': 22.10.6
+      '@types/node': 22.13.0
       '@types/qs': 6.9.18
       '@types/range-parser': 1.2.7
       '@types/send': 0.17.4
@@ -15190,7 +15190,7 @@ snapshots:
   '@types/serve-static@1.15.7':
     dependencies:
       '@types/http-errors': 2.0.4
-      '@types/node': 22.10.6
+      '@types/node': 22.13.0
       '@types/send': 0.17.4
 
   '@types/trusted-types@2.0.7':
@@ -15885,7 +15885,7 @@ snapshots:
   bin-version-check@6.0.0:
     dependencies:
       binary-version: 7.1.0
-      semver: 7.6.3
+      semver: 7.7.0
       semver-truncate: 3.0.0
 
   binary-extensions@2.3.0: {}
@@ -16240,7 +16240,7 @@ snapshots:
       node-api-headers: 1.4.0
       npmlog: 6.0.2
       rc: 1.2.8
-      semver: 7.6.3
+      semver: 7.7.0
       tar: 6.2.1
       url-join: 4.0.1
       which: 2.0.2
@@ -18259,7 +18259,7 @@ snapshots:
       commander: 10.0.1
       p-queue: 6.6.2
       p-retry: 4.6.2
-      semver: 7.6.3
+      semver: 7.7.0
       uuid: 10.0.0
     optionalDependencies:
       openai: 4.73.0(zod@3.23.8)
@@ -18270,7 +18270,7 @@ snapshots:
       commander: 10.0.1
       p-queue: 6.6.2
       p-retry: 4.6.2
-      semver: 7.6.3
+      semver: 7.7.0
       uuid: 10.0.0
     optionalDependencies:
       openai: 4.78.1(zod@3.24.1)
@@ -18714,7 +18714,7 @@ snapshots:
 
   node-abi@3.72.0:
     dependencies:
-      semver: 7.6.3
+      semver: 7.7.0
 
   node-addon-api@2.0.2: {}
 
