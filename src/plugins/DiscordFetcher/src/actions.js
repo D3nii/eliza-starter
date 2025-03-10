@@ -506,10 +506,10 @@ export const discordHistoryAction = {
             console.log("*** DISCORD_MESSAGE_HISTORY handler triggered ***");
 
             // If we received an empty state, make sure to compose it
-            if (!state || Object.keys(state).length === 0) {
-                console.log("No state provided, composing state");
-                state = await runtime.composeState(message);
-            }
+            // if (!state || Object.keys(state).length === 0) {
+            //     console.log("No state provided, composing state");
+            //     state = await runtime.composeState(message);
+            // }
 
             // Send an initial response
             const initialResponse = {
@@ -612,4 +612,3 @@ export const discordHistoryAction = {
 // Export the actions and evaluators
 export const actions = [discordHistoryAction];
 export const evaluators = [];
-export { discordHistoryAction };

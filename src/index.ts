@@ -23,7 +23,7 @@ import {
   parseArguments,
 } from "./config/index.ts";
 import { initializeDatabase } from "./database/index.ts";
-import { discordFetcherPlugin } from "../plugins/discordFetcher/src/index.ts";
+import { discordFetcherPlugin } from "./plugins/discordFetcher/src/index.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
