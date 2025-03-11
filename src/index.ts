@@ -23,7 +23,7 @@ import {
   parseArguments,
 } from "./config/index.ts";
 import { initializeDatabase } from "./database/index.ts";
-import { discordFetcherPlugin } from "./plugins/discordFetcher/src/index.ts";
+import { tweetzPlugin } from "./plugins/Tweetz/src/index.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,7 +60,7 @@ export function createAgent(
       bootstrapPlugin,
       nodePlugin,
       character.settings?.secrets?.WALLET_PUBLIC_KEY ? solanaPlugin : null,
-      discordFetcherPlugin,
+      tweetzPlugin
     ].filter(Boolean),
     providers: [],
     actions: [],

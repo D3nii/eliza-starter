@@ -1,35 +1,16 @@
 /**
- * Custom Discord Plugin for ElizaOS
- * This plugin allows fetching Discord message history for different time periods
+ * Shared Discord utilities for ElizaOS plugins
+ * These utilities can be imported and used by any plugin that interacts with Discord
  */
 
 // Import Discord.js
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 
-
 // Import ElizaOS core functions
 import { generateText, composeContext, ModelClass } from '@elizaos/core';
 
-
-// Configuration for the message history feature
-const config = {
-    // Default time periods in hours
-    timePeriods: {
-        '1h': 1,
-        '4h': 4,
-        '1d': 24,
-        '1w': 168,     // 7 days * 24 hours
-        '1month': 720  // ~30 days * 24 hours
-    },
-    // Maximum number of messages to fetch
-    maxMessages: 10000,
-    sourceChannelIDs: [
-        "1345157213123121182",
-        "1347292341316096061"
-    ],
-    targetChannelId: "1345062534125719562",
-    defaultPrompt: "Analyze the Discord conversation and provide a summary of the conversation. Be sure to include all the details of the conversation, including the names of the people involved and the content of the messages. \n\n{{messages}}"
-};
+// Import shared utilities
+import { parseTimeCommand } from './timeUtils.js';
 
 // Create a Discord client instance
 const client = new Client({
@@ -50,7 +31,7 @@ client.once('ready', () => {
 });
 
 // Login to Discord with the token
-const initializeClient = async () => {
+export const initializeClient = async () => {
     if (!process.env.DISCORD_API_TOKEN) {
         console.error('DISCORD_API_TOKEN is not defined in environment variables');
         return false;
@@ -69,30 +50,11 @@ const initializeClient = async () => {
 initializeClient();
 
 /**
- * Helper function to parse the time period from the command
- * @param {string} text - The command text
- * @returns {number|null} - Hours to look back, or null if invalid
- */
-function parseTimePeriod(text) {
-    const lowerText = text.toLowerCase().trim();
-
-    // Check for specific time periods
-    for (const [period, hours] of Object.entries(config.timePeriods)) {
-        if (lowerText.includes(period)) {
-            return { hours, display: period };
-        }
-    }
-
-    // Default to 24 hours (1 day) if no specific period is mentioned
-    return { hours: config.timePeriods['1d'], display: '1d' };
-}
-
-/**
  * Format the message history into a format suitable for AI input
  * @param {Array} messages - Array of Discord messages
  * @returns {string} - Formatted message history
  */
-function formatMessageHistory(messages) {
+export function formatMessageHistory(messages) {
     if (!messages || messages.length === 0) {
         return "No messages found in the specified time period.";
     }
@@ -110,7 +72,8 @@ function formatMessageHistory(messages) {
 
     sortedMessages.forEach(msg => {
         const username = msg.author?.username || 'Unknown User';
-        const content = msg.content || '';
+        let content = msg.content || '';
+        const timestamp = new Date(msg.createdTimestamp).toISOString();
 
         // Check if this message is from a thread
         if (msg.threadName && msg.threadName !== currentThreadName) {
@@ -123,11 +86,166 @@ function formatMessageHistory(messages) {
             output += `[MAIN CHANNEL]\n\n`;
         }
 
-        // Simple format: Username: Message (without timestamp)
-        output += `${username}: ${content}\n\n`;
+        // Start with basic message info
+        output += `[${timestamp}] ${username}:\n`;
+
+        // Add embeds content to the message content
+        if (msg.embeds && msg.embeds.length > 0) {
+            msg.embeds.forEach(embed => {
+                const embedContent = extractEmbedContent(embed);
+                if (embedContent) {
+                    if (content) content += '\n\n';
+                    content += embedContent;
+                }
+            });
+        }
+
+        // Add content if exists (now includes embed content)
+        if (content) {
+            output += `${content}\n`;
+        }
+
+        // Add embeds if any (still keep the detailed view for reference)
+        if (msg.embeds && msg.embeds.length > 0) {
+            msg.embeds.forEach((embed, index) => {
+                output += `--- Embed ${index + 1} ---\n`;
+
+                // Title and description
+                if (embed.title) output += `Title: ${embed.title}\n`;
+                if (embed.description) output += `Description: ${embed.description}\n`;
+
+                // URL
+                if (embed.url) output += `URL: ${embed.url}\n`;
+
+                // Author
+                if (embed.author) {
+                    output += `Author: ${embed.author.name || 'Unknown'}\n`;
+                    if (embed.author.url) output += `Author URL: ${embed.author.url}\n`;
+                }
+
+                // Fields
+                if (embed.fields && embed.fields.length > 0) {
+                    output += `Fields:\n`;
+                    embed.fields.forEach(field => {
+                        output += `  ${field.name}: ${field.value}\n`;
+                    });
+                }
+
+                // Footer
+                if (embed.footer) {
+                    output += `Footer: ${embed.footer.text || ''}\n`;
+                }
+
+                // Timestamp
+                if (embed.timestamp) {
+                    output += `Timestamp: ${new Date(embed.timestamp).toISOString()}\n`;
+                }
+
+                // Image and thumbnail
+                if (embed.image) output += `Image URL: ${embed.image.url}\n`;
+                if (embed.thumbnail) output += `Thumbnail URL: ${embed.thumbnail.url}\n`;
+
+                output += `--- End Embed ${index + 1} ---\n`;
+            });
+        }
+
+        // Add attachments if any
+        if (msg.attachments && msg.attachments.size > 0) {
+            output += `\n[ATTACHMENTS (${msg.attachments.size})]\n`;
+            [...msg.attachments.values()].forEach((attachment, index) => {
+                output += `Attachment ${index + 1}: ${attachment.name} - ${attachment.url}\n`;
+                output += `Type: ${attachment.contentType || 'Unknown'}\n`;
+                output += `Size: ${formatBytes(attachment.size)}\n`;
+            });
+        }
+
+        // Add stickers if any
+        if (msg.stickers && msg.stickers.size > 0) {
+            output += `\n[STICKERS (${msg.stickers.size})]\n`;
+            [...msg.stickers.values()].forEach((sticker, index) => {
+                output += `Sticker ${index + 1}: ${sticker.name} - ID: ${sticker.id}\n`;
+            });
+        }
+
+        // Add reactions if any
+        if (msg.reactions && msg.reactions.cache.size > 0) {
+            output += `\n[REACTIONS]\n`;
+            [...msg.reactions.cache.values()].forEach(reaction => {
+                output += `${reaction.emoji.name || reaction.emoji.id}: ${reaction.count}\n`;
+            });
+        }
+
+        // Add components (buttons, select menus, etc) if any
+        if (msg.components && msg.components.length > 0) {
+            output += `\n[COMPONENTS (${msg.components.length})]\n`;
+            msg.components.forEach((row, rowIndex) => {
+                output += `Component Row ${rowIndex + 1}:\n`;
+                row.components.forEach((component, compIndex) => {
+                    output += `  Component ${compIndex + 1} Type: ${component.type}\n`;
+                    if (component.label) output += `  Label: ${component.label}\n`;
+                    if (component.customId) output += `  Custom ID: ${component.customId}\n`;
+                    if (component.style) output += `  Style: ${component.style}\n`;
+                    if (component.emoji) output += `  Emoji: ${component.emoji.name || component.emoji.id}\n`;
+                    if (component.url) output += `  URL: ${component.url}\n`;
+                });
+            });
+        }
+
+        // Add crossposted info if available
+        if (msg.crosspostable || msg.crosspostedFrom) {
+            output += `\n[CROSSPOST INFO]\n`;
+            if (msg.crosspostable) output += `Crosspostable: Yes\n`;
+            if (msg.crosspostedFrom) output += `Crossposted from: ${msg.crosspostedFrom}\n`;
+        }
+
+        // Add reference info (for replies)
+        if (msg.reference) {
+            output += `\n[REFERENCE]\n`;
+            output += `This message is a reply to message ID: ${msg.reference.messageId}\n`;
+        }
+
+        // Add separator for readability
+        output += `\n${'='.repeat(50)}\n\n`;
     });
 
     return output;
+}
+
+/**
+ * Helper function to extract readable content from an embed
+ * @param {Object} embed - Discord embed object
+ * @returns {string|null} - Extracted content or null
+ */
+function extractEmbedContent(embed) {
+    if (!embed) return null;
+
+    let content = '';
+
+    if (embed.title) content += `${embed.title}\n`;
+    if (embed.description) content += `${embed.description}\n`;
+
+    if (embed.fields && embed.fields.length > 0) {
+        embed.fields.forEach(field => {
+            content += `${field.name}: ${field.value}\n`;
+        });
+    }
+
+    return content.trim() || null;
+}
+
+/**
+ * Format bytes to human-readable format
+ * @param {number} bytes - Size in bytes
+ * @returns {string} - Formatted size string
+ */
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 /**
@@ -137,12 +255,12 @@ function formatMessageHistory(messages) {
  * @param {string} customPrompt - Optional custom prompt for the AI
  * @returns {Promise<string>} - AI response
  */
-async function processWithAI(formattedMessages, runtime, customPrompt = null) {
+export async function processWithAI(formattedMessages, runtime, customPrompt = null) {
     try {
         console.log("Processing messages with ElizaOS AI...");
 
         // Create the prompt for the AI
-        const prompt = customPrompt || config.defaultPrompt;
+        const prompt = customPrompt || "Analyze the Discord conversation and provide a summary of the conversation. Be sure to include all the details of the conversation, including the names of the people involved and the content of the messages. \n\n{{messages}}";
 
         const context = composeContext({
             state: {
@@ -170,7 +288,7 @@ async function processWithAI(formattedMessages, runtime, customPrompt = null) {
  * @param {Array} [files] - Optional array of file attachments
  * @returns {Promise<Array>} - Array of sent message objects
  */
-async function sendDiscordMessage(content, channelId, files = null) {
+export async function sendDiscordMessage(content, channelId, files = null) {
     const channel = client.channels.cache.get(channelId);
     if (!channel) {
         console.error("Channel not found:", channelId);
@@ -217,7 +335,7 @@ async function sendDiscordMessage(content, channelId, files = null) {
  * @param {number} maxLength - Maximum length of each chunk
  * @returns {Array<string>} - Array of message chunks
  */
-function splitMessage(content, maxLength) {
+export function splitMessage(content, maxLength) {
     if (!content) return [''];
 
     const messages = [];
@@ -260,9 +378,10 @@ function splitMessage(content, maxLength) {
  * @param {number} hours - Hours to look back
  * @param {string} channelId - Discord channel ID
  * @param {Object} runtime - ElizaOS runtime
+ * @param {number} maxMessages - Maximum number of messages to fetch (default: 10000)
  * @returns {Promise<Array>} - Array of messages
  */
-async function fetchDiscordHistory(message, hours, channelId, runtime) {
+export async function fetchDiscordHistory(message, hours, channelId, runtime, maxMessages = 10000) {
     try {
         // Wait for client to be ready
         if (!isClientReady) {
@@ -288,17 +407,14 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
             return [];
         }
 
-        // Use provided channelId or default to a specific channel
-        const targetChannelId = channelId || config.sourceChannelIDs[0];
-
-        console.log(`Fetching Discord history for channel ${targetChannelId} for the last ${hours} hours`);
+        console.log(`Fetching Discord history for channel ${channelId} for the last ${hours} hours`);
 
         // Calculate the timestamp to fetch messages after
         const now = new Date();
         const lookbackTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
 
         // Fetch the channel
-        const channel = await client.channels.fetch(targetChannelId);
+        const channel = await client.channels.fetch(channelId);
 
         if (!channel || !channel.messages) {
             console.error("Invalid Discord channel or cannot fetch messages");
@@ -324,7 +440,7 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
         lastMessageId = fetchedMessages.last()?.id;
 
         // Continue fetching until we reach the limit or run out of messages
-        while (keepFetching && lastMessageId && allMessages.size < config.maxMessages) {
+        while (keepFetching && lastMessageId && allMessages.size < maxMessages) {
             console.log(`Fetched ${allMessages.size} messages so far, fetching more...`);
 
             // Fetch the next batch of messages
@@ -361,7 +477,7 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
             lastMessageId = fetchedMessages.last()?.id;
 
             // If we've reached our limit, stop fetching
-            if (allMessages.size >= config.maxMessages) {
+            if (allMessages.size >= maxMessages) {
                 keepFetching = false;
             }
         }
@@ -374,7 +490,7 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
 
                 // For each thread, fetch messages
                 for (const [threadId, thread] of activeThreads.threads) {
-                    if (allMessages.size >= config.maxMessages) break;
+                    if (allMessages.size >= maxMessages) break;
 
                     console.log(`Fetching messages from thread: ${thread.name}`);
 
@@ -383,7 +499,7 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
 
                     // Add thread messages to our collection if they're after the lookback time
                     threadMessages.forEach(msg => {
-                        if (allMessages.size >= config.maxMessages) return;
+                        if (allMessages.size >= maxMessages) return;
 
                         const msgDate = new Date(msg.createdTimestamp);
                         if (msgDate >= lookbackTime) {
@@ -406,7 +522,7 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
 
                 // For each archived thread, fetch messages
                 for (const [threadId, thread] of archivedThreads.threads) {
-                    if (allMessages.size >= config.maxMessages) break;
+                    if (allMessages.size >= maxMessages) break;
 
                     console.log(`Fetching messages from archived thread: ${thread.name}`);
 
@@ -415,7 +531,7 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
 
                     // Add thread messages to our collection if they're after the lookback time
                     threadMessages.forEach(msg => {
-                        if (allMessages.size >= config.maxMessages) return;
+                        if (allMessages.size >= maxMessages) return;
 
                         const msgDate = new Date(msg.createdTimestamp);
                         if (msgDate >= lookbackTime) {
@@ -438,177 +554,5 @@ async function fetchDiscordHistory(message, hours, channelId, runtime) {
     }
 }
 
-// Discord Message History Action
-export const discordHistoryAction = {
-    name: "DISCORD_MESSAGE_HISTORY",
-    similes: [
-        "DISCORD_HISTORY",
-        "MESSAGE_HISTORY",
-        "CHAT_HISTORY",
-        "FETCH_MESSAGES"
-    ],
-    description: "Fetches Discord message history for a specified time period (1h, 4h, 1d, 1w, 1month)",
-    pattern: /(?:analyze|summarize|fetch|get|show|give me|what's in|look at).*(?:discord|conversation|chat|message|channel).*(?:history|messages|chat|conversation).*(?:from|for|in|over|during|the last|past)?\s*(?:(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(\d+)\s*(?:hour|hr|h|day|d|week|w|month|m)s?|(?:1h|4h|1d|1w|1month))/i,
-
-    validate: async (runtime, message, _state) => {
-        console.log("DISCORD_MESSAGE_HISTORY validate called with message:", JSON.stringify(message, null, 2));
-        try {
-            // Skip if there's no text content
-            if (!message.content?.text) {
-                console.log("No text content in message");
-                return false;
-            }
-
-            const text = message.content.text.toLowerCase().trim();
-            console.log("Processing text:", text);
-
-            if (text.toLowerCase().includes('big brains do the thing')) {
-                console.log("Big Brains Do the thing trigger detected");
-                return true;
-            }
-
-            // Check if this is an analysis request
-            const isAnalysisRequest = text.includes('analyze') ||
-                text.includes('summarize') ||
-                text.includes('summary') ||
-                text.includes('process');
-
-            // Check if Discord is mentioned (optional)
-            const mentionsDiscord = text.includes('discord') ||
-                text.includes('channel') ||
-                text.includes('server');
-
-            // Check if any time period is mentioned
-            const hasTimePeriod = Object.keys(config.timePeriods).some(period =>
-                text.includes(period)
-            );
-
-            // We'll be more lenient - if it's an analysis request with a time period, we'll handle it
-            // even if Discord isn't explicitly mentioned
-            const shouldHandle = isAnalysisRequest && (hasTimePeriod || text.includes('recent'));
-
-            // If we should handle this, explicitly return true
-            if (shouldHandle) {
-                console.log("Should handle this message based on analysis request");
-                return true;
-            }
-
-            console.log("Message doesn't match criteria for handling");
-            return false;
-        } catch (error) {
-            console.error("Error in DISCORD_ANALYZE validate:", error);
-            return false;
-        }
-    },
-
-    handler: async (runtime, message, state, options, callback) => {
-        try {
-            console.log("*** DISCORD_MESSAGE_HISTORY handler triggered ***");
-
-            // If we received an empty state, make sure to compose it
-            // if (!state || Object.keys(state).length === 0) {
-            //     console.log("No state provided, composing state");
-            //     state = await runtime.composeState(message);
-            // }
-
-            // Send an initial response
-            const initialResponse = {
-                text: "Fetching Discord message history... This might take a moment.",
-                action: "DISCORD_HISTORY_RESPONSE",
-                source: message.content?.source || "unknown"
-            };
-
-            try {
-                await callback(initialResponse);
-                console.log("Sent initial response");
-            } catch (callbackError) {
-                console.error("Error sending initial response:", callbackError);
-            }
-
-            // Parse the time period from the message
-            const timePeriod = parseTimePeriod(message.content.text);
-
-            // Fetch the message history from all source channels
-            let allMessages = [];
-            for (const channelId of config.sourceChannelIDs) {
-                const channelMessages = await fetchDiscordHistory(message, timePeriod.hours, channelId, runtime);
-                console.log(`Fetched ${channelMessages.length} messages from channel ${channelId}`);
-                allMessages = allMessages.concat(channelMessages);
-            }
-            console.log(`Fetched ${allMessages.length} messages in total`);
-
-            // Format the message history
-            const formattedMessages = formatMessageHistory(allMessages);
-
-            // Process with AI if needed
-            let finalResponse = formattedMessages;
-            console.log("Processing with AI...");
-            try {
-                const aiResponse = await processWithAI(formattedMessages, runtime);
-                if (aiResponse) {
-                    finalResponse = aiResponse;
-                }
-            } catch (aiError) {
-                console.error("Error processing with AI:", aiError);
-            }
-
-            // Prepare the final response
-            const finalResponseText = `Here's the Discord message history analysis for the last ${timePeriod.display}:\n\n${finalResponse}`;
-
-            // Create the response object
-            const response = {
-                text: finalResponseText,
-                action: "DISCORD_HISTORY_RESPONSE",
-                source: message.content?.source || "unknown"
-            };
-
-            // If messages is not from Discord, send the response to the target channel
-            if (message.content?.source !== "discord") {
-                console.log("Sending response to target channel:", config.targetChannelId);
-                await sendDiscordMessage(finalResponseText, config.targetChannelId);
-            }
-
-            await callback(response);
-            return response;
-        } catch (error) {
-            console.error("Error in DISCORD_MESSAGE_HISTORY handler:", error);
-
-            // Send an error response
-            const errorResponse = {
-                text: "I encountered an error while fetching the Discord message history. Please try again later.",
-                action: "DISCORD_HISTORY_RESPONSE",
-                source: message.content?.source || "unknown"
-            };
-
-            try {
-                await callback(errorResponse);
-            } catch (callbackError) {
-                console.error("Error sending error response:", callbackError);
-            }
-
-            return errorResponse;
-        }
-    },
-
-    examples: [
-        [
-            {
-                user: "User1",
-                content: {
-                    // text: "Analyze the Discord conversation from the last 1d"
-                    text: "Big Brains Do the thing the last 1d of the conversation"
-                }
-            },
-            {
-                user: "Eliza",
-                content: {
-                    text: "Here's the Discord message history for the last 4 hours..."
-                }
-            }
-        ]
-    ]
-};
-
-// Export the actions and evaluators
-export const actions = [discordHistoryAction];
-export const evaluators = [];
+// Export the client for direct access if needed
+export const discordClient = client; 

@@ -1,5 +1,5 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
-import { discordFetcherPlugin } from "../plugins/discordFetcher/src/index.ts";
+import { tweetzPlugin } from "../plugins/Tweetz/src/index.ts";
 
 /**
  * Custom AutoClient that triggers the discordFetcher plugin every 10 minutes
@@ -28,7 +28,7 @@ export class CustomAutoClient {
       elizaLogger.log("Running auto client for Discord Fetcher...");
       
       // Find the discord history action
-      const discordHistoryAction = discordFetcherPlugin.actions[0];
+      const discordHistoryAction = tweetzPlugin.actions[0];
       
       if (!discordHistoryAction) {
         elizaLogger.error("Discord history action not found");
