@@ -27,6 +27,7 @@ import { initializeDatabase } from "./database/index.ts";
 import { tweetzPlugin } from "./plugins/Tweetz/src/index.ts";
 import { dynoPlugin } from "./plugins/Dyno/src/index.ts";
 import { telebugPlugin } from "./plugins/Telebug/src/index.ts";
+import { quantfasePlugin } from "./plugins/Quantfase/src/index.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,7 +66,8 @@ export function createAgent(
       character.settings?.secrets?.WALLET_PUBLIC_KEY ? solanaPlugin : null,
       tweetzPlugin,
       dynoPlugin,
-      telebugPlugin
+      telebugPlugin,
+      quantfasePlugin
     ].filter(Boolean),
     providers: [],
     actions: [],
