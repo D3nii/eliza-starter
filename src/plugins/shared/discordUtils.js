@@ -309,7 +309,8 @@ export async function sendDiscordMessage(content, channelId, files = null) {
             const message = messages[i];
             if (message.trim().length > 0 || (i === messages.length - 1 && files)) {
                 const options = {
-                    content: message.trim()
+                    content: message.trim(),
+                    allowedMentions: { parse: ['users', 'roles'], repliedUser: true, everyone: false }
                 };
 
                 // Add files to the last message chunk
