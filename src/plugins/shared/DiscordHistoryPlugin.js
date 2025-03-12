@@ -136,11 +136,11 @@ export class DiscordHistoryPlugin {
                     }
 
                     // Prepare the final response text
-                    const finalResponseText = `Here's the Discord message history analysis for the last ${timePeriod.display}:\n\n${finalResponse}`;
+                    const finalResponseText = `Here's the ${this.pluginName} message history analysis for the last ${timePeriod.display}:\n\n${finalResponse}`;
 
                     // Prepare the formatted response
                     const response = {
-                        text: `# Discord History Summary (${timePeriod.display})\n\n${finalResponse}`,
+                        text: `# ${this.pluginName} History Summary (${timePeriod.display})\n\n${finalResponse}`,
                         action: `${this.pluginName.toUpperCase()}_HISTORY_RESPONSE`,
                         source: message.content?.source || "unknown"
                     };
@@ -158,7 +158,7 @@ export class DiscordHistoryPlugin {
 
                     // Send an error response
                     const errorResponse = {
-                        text: `Error fetching Discord history: ${error.message}`,
+                        text: `Error fetching ${this.pluginName} history: ${error.message}`,
                         action: `${this.pluginName.toUpperCase()}_HISTORY_RESPONSE`,
                         source: message.content?.source || "unknown"
                     };
@@ -184,7 +184,7 @@ export class DiscordHistoryPlugin {
                     {
                         user: "Eliza",
                         content: {
-                            text: `Here's the Discord message history for the last 1d...`
+                            text: `Here's the ${this.pluginName} message history for the last 1d...`
                         }
                     }
                 ]

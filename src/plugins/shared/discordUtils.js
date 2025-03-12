@@ -50,13 +50,13 @@ export const initializeClient = async () => {
 initializeClient();
 
 /**
- * Format the message history into a format suitable for AI input
+ * Format the message history into a JSON format with basic message info
  * @param {Array} messages - Array of Discord messages
- * @returns {string} - Formatted message history
+ * @returns {Object} - JSON formatted message history
  */
 export function formatMessageHistory(messages) {
     if (!messages || messages.length === 0) {
-        return "No messages found in the specified time period.";
+        return { messages: [] };
     }
 
     // Sort messages by timestamp (oldest first)
@@ -64,151 +64,41 @@ export function formatMessageHistory(messages) {
         a.createdTimestamp - b.createdTimestamp
     );
 
-    // Format as a simple conversation transcript
-    let output = "Discord Conversation:\n\n";
-
-    // Track the current thread to add headers
-    let currentThreadName = null;
-
-    sortedMessages.forEach(msg => {
-        const username = msg.author?.username || 'Unknown User';
-        let content = msg.content || '';
-        const timestamp = new Date(msg.createdTimestamp).toISOString();
-
-        // Check if this message is from a thread
-        if (msg.threadName && msg.threadName !== currentThreadName) {
-            // Add a thread header when we switch to a new thread
-            currentThreadName = msg.threadName;
-            output += `[THREAD: ${currentThreadName}]\n\n`;
-        } else if (!msg.threadName && currentThreadName !== null) {
-            // We're back to the main channel
-            currentThreadName = null;
-            output += `[MAIN CHANNEL]\n\n`;
-        }
-
-        // Start with basic message info
-        output += `[${timestamp}] ${username}:\n`;
-
-        // Add embeds content to the message content
+    // Format each message with only the required fields
+    const formattedMessages = sortedMessages.map(msg => {
+        // Get embed contents
+        let embedContents = [];
         if (msg.embeds && msg.embeds.length > 0) {
             msg.embeds.forEach(embed => {
-                const embedContent = extractEmbedContent(embed);
-                if (embedContent) {
-                    if (content) content += '\n\n';
-                    content += embedContent;
-                }
-            });
-        }
-
-        // Add content if exists (now includes embed content)
-        if (content) {
-            output += `${content}\n`;
-        }
-
-        // Add embeds if any (still keep the detailed view for reference)
-        if (msg.embeds && msg.embeds.length > 0) {
-            msg.embeds.forEach((embed, index) => {
-                output += `--- Embed ${index + 1} ---\n`;
-
-                // Title and description
-                if (embed.title) output += `Title: ${embed.title}\n`;
-                if (embed.description) output += `Description: ${embed.description}\n`;
-
-                // URL
-                if (embed.url) output += `URL: ${embed.url}\n`;
-
-                // Author
-                if (embed.author) {
-                    output += `Author: ${embed.author.name || 'Unknown'}\n`;
-                    if (embed.author.url) output += `Author URL: ${embed.author.url}\n`;
-                }
-
-                // Fields
+                let parts = [];
+                if (embed.title) parts.push(embed.title);
+                if (embed.description) parts.push(embed.description);
                 if (embed.fields && embed.fields.length > 0) {
-                    output += `Fields:\n`;
                     embed.fields.forEach(field => {
-                        output += `  ${field.name}: ${field.value}\n`;
+                        parts.push(`${field.name}: ${field.value}`);
                     });
                 }
-
-                // Footer
-                if (embed.footer) {
-                    output += `Footer: ${embed.footer.text || ''}\n`;
+                if (parts.length > 0) {
+                    embedContents.push(parts.join(' '));
                 }
-
-                // Timestamp
-                if (embed.timestamp) {
-                    output += `Timestamp: ${new Date(embed.timestamp).toISOString()}\n`;
-                }
-
-                // Image and thumbnail
-                if (embed.image) output += `Image URL: ${embed.image.url}\n`;
-                if (embed.thumbnail) output += `Thumbnail URL: ${embed.thumbnail.url}\n`;
-
-                output += `--- End Embed ${index + 1} ---\n`;
             });
         }
 
-        // Add attachments if any
-        if (msg.attachments && msg.attachments.size > 0) {
-            output += `\n[ATTACHMENTS (${msg.attachments.size})]\n`;
-            [...msg.attachments.values()].forEach((attachment, index) => {
-                output += `Attachment ${index + 1}: ${attachment.name} - ${attachment.url}\n`;
-                output += `Type: ${attachment.contentType || 'Unknown'}\n`;
-                output += `Size: ${formatBytes(attachment.size)}\n`;
-            });
+        // Combine main content with embeds
+        let content = msg.content || '';
+        if (embedContents.length > 0) {
+            content += '\nembeds:' + embedContents.join('. ');
         }
 
-        // Add stickers if any
-        if (msg.stickers && msg.stickers.size > 0) {
-            output += `\n[STICKERS (${msg.stickers.size})]\n`;
-            [...msg.stickers.values()].forEach((sticker, index) => {
-                output += `Sticker ${index + 1}: ${sticker.name} - ID: ${sticker.id}\n`;
-            });
-        }
-
-        // Add reactions if any
-        if (msg.reactions && msg.reactions.cache.size > 0) {
-            output += `\n[REACTIONS]\n`;
-            [...msg.reactions.cache.values()].forEach(reaction => {
-                output += `${reaction.emoji.name || reaction.emoji.id}: ${reaction.count}\n`;
-            });
-        }
-
-        // Add components (buttons, select menus, etc) if any
-        if (msg.components && msg.components.length > 0) {
-            output += `\n[COMPONENTS (${msg.components.length})]\n`;
-            msg.components.forEach((row, rowIndex) => {
-                output += `Component Row ${rowIndex + 1}:\n`;
-                row.components.forEach((component, compIndex) => {
-                    output += `  Component ${compIndex + 1} Type: ${component.type}\n`;
-                    if (component.label) output += `  Label: ${component.label}\n`;
-                    if (component.customId) output += `  Custom ID: ${component.customId}\n`;
-                    if (component.style) output += `  Style: ${component.style}\n`;
-                    if (component.emoji) output += `  Emoji: ${component.emoji.name || component.emoji.id}\n`;
-                    if (component.url) output += `  URL: ${component.url}\n`;
-                });
-            });
-        }
-
-        // Add crossposted info if available
-        if (msg.crosspostable || msg.crosspostedFrom) {
-            output += `\n[CROSSPOST INFO]\n`;
-            if (msg.crosspostable) output += `Crosspostable: Yes\n`;
-            if (msg.crosspostedFrom) output += `Crossposted from: ${msg.crosspostedFrom}\n`;
-        }
-
-        // Add reference info (for replies)
-        if (msg.reference) {
-            output += `\n[REFERENCE]\n`;
-            output += `This message is a reply to message ID: ${msg.reference.messageId}\n`;
-        }
-
-        // Add separator for readability
-        output += `\n${'='.repeat(50)}\n\n`;
+        return {
+            username: msg.author?.username || 'Unknown User',
+            content: content,
+            timestamp: new Date(msg.createdTimestamp).toISOString()
+        };
     });
 
-    return output;
+    // return { messages: formattedMessages };
+    return JSON.stringify(formattedMessages, null, 2);
 }
 
 /**
