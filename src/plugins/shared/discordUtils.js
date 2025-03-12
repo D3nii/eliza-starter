@@ -12,6 +12,9 @@ import { generateText, composeContext, ModelClass } from '@elizaos/core';
 // Import shared utilities
 import { parseTimeCommand } from './timeUtils.js';
 
+// Configure how many messages to process in each chunk
+export const MESSAGES_PER_CHUNK = 400;
+
 // Create a Discord client instance
 const client = new Client({
     intents: [
@@ -140,31 +143,60 @@ function formatBytes(bytes) {
 
 /**
  * Process message history with ElizaOS AI
- * @param {string} formattedMessages - Formatted message history
+ * @param {Array|string} messages - Array of messages or JSON string of messages to process
  * @param {Object} runtime - ElizaOS runtime
- * @param {string} customPrompt - Optional custom prompt for the AI
+ * @param {string} prompt - The prompt template to use for analysis
  * @returns {Promise<string>} - AI response
  */
-export async function processWithAI(formattedMessages, runtime, customPrompt = null) {
+export async function processWithAI(messages, runtime, prompt) {
     try {
         console.log("Processing messages with ElizaOS AI...");
 
-        // Create the prompt for the AI
-        const prompt = customPrompt || "Analyze the Discord conversation and provide a summary of the conversation. Be sure to include all the details of the conversation, including the names of the people involved and the content of the messages. \n\n{{messages}}";
+        // Parse the messages into an array if they're provided as a string
+        const messageArray = typeof messages === 'string' ?
+            JSON.parse(messages) : messages;
 
-        const context = composeContext({
-            state: {
-                messages: formattedMessages
-            },
-            // make sure it fits, we can pad the tokens a bit
-            template: prompt
-        });
-        const summary = await generateText({
-            runtime,
-            context,
-            modelClass: ModelClass.SMALL
-        });
-        return summary;
+        // Process messages in chunks
+        const results = [];
+        for (let i = 0; i < messageArray.length; i += MESSAGES_PER_CHUNK) {
+            const messageChunk = messageArray.slice(i, i + MESSAGES_PER_CHUNK);
+
+            const context = composeContext({
+                state: {
+                    messages: JSON.stringify(messageChunk, null, 2)
+                },
+                template: `${prompt}\n\n{{messages}}`
+            });
+
+            const chunkSummary = await generateText({
+                runtime,
+                context,
+                modelClass: ModelClass.SMALL
+            });
+
+            results.push(chunkSummary);
+        }
+
+        // If we processed multiple chunks, combine them with a final summary
+        if (results.length > 1) {
+            const finalContext = composeContext({
+                state: {
+                    summaries: results.join("\n\n")
+                },
+                template: "Please combine all these points under same titles, and keep the emojis as they are:\n\n{{summaries}}"
+            });
+
+            const finalSummary = await generateText({
+                runtime,
+                context: finalContext,
+                modelClass: ModelClass.SMALL
+            });
+
+            return finalSummary;
+        }
+
+        // If only one chunk was processed, return its result
+        return results[0] || "No messages to process.";
     } catch (error) {
         console.error("Error processing with AI:", error);
         return "Error: Unable to process messages with AI. Please check the logs for details.";

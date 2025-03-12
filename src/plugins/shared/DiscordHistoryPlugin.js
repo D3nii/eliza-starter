@@ -127,7 +127,11 @@ export class DiscordHistoryPlugin {
                     let finalResponse = formattedMessages;
                     console.log(`${this.pluginName}: Processing with AI...`);
                     try {
-                        const aiResponse = await processWithAI(formattedMessages, runtime, this.defaultPrompt);
+                        const aiResponse = await processWithAI(
+                            formattedMessages,
+                            runtime,
+                            this.defaultPrompt
+                        );
                         if (aiResponse) {
                             finalResponse = aiResponse;
                         }
