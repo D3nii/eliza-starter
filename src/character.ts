@@ -3,8 +3,8 @@ import { Character, Clients, ModelProviderName } from "@elizaos/core";
 export const character: Character = {
     "name": "Quant",
     "plugins": [],
-    "clients": [],   
-    "modelProvider": ModelProviderName.GROK,
+    "clients": [Clients.AUTO],   
+    "modelProvider": ModelProviderName.OPENAI,
     "settings": {
         "secrets": {},
         "voice": {
