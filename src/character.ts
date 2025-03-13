@@ -4,6 +4,20 @@ export const character: Character = {
     "name": "Quant",
     "plugins": [],
     "clients": [ Clients.AUTO, Clients.DISCORD ],   
+    "clientConfig": {
+        "discord": {
+            "allowedChannelIds": [
+                "1345062755245490196", // Layer 1 - Phase 3
+                "1348697263177859143", // bm1-private-eliza
+                "1349009989892833360", // layer-1-summary-x
+                "1349010551870849138", // layer-1-summary-discord
+                "1349011247248707584", // layer-1-summary-telegram
+                "1349108063650451487", // layer-1-summary-indicators
+            ],
+            "shouldIgnoreBotMessages": true,
+            "shouldRespondOnlyToMentions": true,
+        }
+    },
     "modelProvider": ModelProviderName.OPENAI,
     "settings": {
         "secrets": {},
