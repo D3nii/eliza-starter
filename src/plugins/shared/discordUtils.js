@@ -175,6 +175,9 @@ export async function processWithAI(messages, runtime, prompt) {
             });
 
             results.push(chunkSummary);
+
+            // wait for 5 seconds
+            await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
         // If we processed multiple chunks, combine them with a final summary
@@ -183,7 +186,7 @@ export async function processWithAI(messages, runtime, prompt) {
                 state: {
                     summaries: results.join("\n\n")
                 },
-                template: "Please combine all these points under same titles, and keep the emojis as they are:\n\n{{summaries}}"
+                template: "Please combine all these points under same titles::\n\n{{summaries}}"
             });
 
             const finalSummary = await generateText({

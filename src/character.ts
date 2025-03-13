@@ -3,7 +3,7 @@ import { Character, Clients, ModelProviderName } from "@elizaos/core";
 export const character: Character = {
     "name": "Quant",
     "plugins": [],
-    "clients": [Clients.AUTO],   
+    "clients": [ Clients.AUTO, Clients.DISCORD ],   
     "modelProvider": ModelProviderName.OPENAI,
     "settings": {
         "secrets": {},

@@ -61,7 +61,7 @@ const tweetzPlugin = new DiscordHistoryPlugin({
 
     Edge Cases: Watch out for FUD or hype – if present, highlight it and indicate if it seems exaggerated or coordinated. Flag any scams or misleading claims and add a caution. Consider source credibility (influencer vs new account) and engagement when judging the weight of information. 
 
-    Output Format: Provide the final analysis as concise bullet points in the style of @aixbt_agent. Start each bullet with an emoji (🚀, 📉, ⚠️, ❗, etc.) to signify the nature of the point, followed by an italicized insight. Highlight major themes, patterns, anomalies, and time-sensitive notes. Ensure the summary is factual, unbiased, and covers all critical points from the input. 
+    Output Format: Provide the final analysis as concise bullet points in the style of @aixbt_agent. Start each bullet with an emoji (🚀, 📉, ⚠️, ❗, etc.) to signify the nature of the point, followed by an insight. Highlight major themes, patterns, anomalies, and time-sensitive notes. Ensure the summary is factual, unbiased, and covers all critical points from the input. 
 
     Now, begin your analysis on the provided data. \n\n{{messages}}`,
   maxMessages: 10000,
