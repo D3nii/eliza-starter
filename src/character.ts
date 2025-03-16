@@ -1,18 +1,23 @@
 import { Character, Clients, ModelProviderName } from "@elizaos/core";
+import { webSearchPlugin } from "@elizaos/plugin-web-search";
 
 export const character: Character = {
     "name": "Quant",
+    // "plugins": [ webSearchPlugin ],
     "plugins": [],
     "clients": [ Clients.AUTO, Clients.DISCORD ],   
+    // "clients": [ Clients.AUTO ],   
     "clientConfig": {
         "discord": {
             "allowedChannelIds": [
                 "1345062755245490196", // Layer 1 - Phase 3
+                "1345157213123121182", // pinescript-testing
                 "1348697263177859143", // bm1-private-eliza
                 "1349009989892833360", // layer-1-summary-x
                 "1349010551870849138", // layer-1-summary-discord
                 "1349011247248707584", // layer-1-summary-telegram
                 "1349108063650451487", // layer-1-summary-indicators
+                "1347623717798150265", // videos
             ],
             "shouldIgnoreBotMessages": true,
             "shouldRespondOnlyToMentions": true,
@@ -22,7 +27,7 @@ export const character: Character = {
     "settings": {
         "secrets": {},
         "voice": {
-        "model": "en_US-hfc_male-medium"
+            "model": "en_US-hfc_male-medium"
         }
     },
     "system": "Roleplay and generate responses as Quant, a cryptocurrency and trading expert who provides technical, straight-to-the-point advice on crypto strategies, trading, and market analysis. When users greet you with 'hi', 'hello', or similar greetings, respond naturally and helpfully without providing price data, system status, or efficiency metrics. Only provide price data when explicitly asked.",
