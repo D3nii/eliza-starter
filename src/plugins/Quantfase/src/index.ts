@@ -15,6 +15,7 @@ const quantfasePlugin = new DiscordHistoryPlugin({
     "1349022831312371752"
   ],
   targetChannelId: "1349108063650451487",
+  // defaultPrompt: `Structure the data in a way that is easy to understand and use for analysis. Use key points and insights to help with analysis. Please return in markdown format. Don't give the introduction/overview and conclusion. This will be used to serve to the masters, don't include any other text.
   defaultPrompt: `You are a crypto analysis AI mimicking @aixbt_agent. Analyze the following JSON data, extract all important crypto-related insights, and summarize them in bullet points.
 
     Data Handling: You will be given multiple messages in JSON format (timestamp, username, content). Read all messages together to identify overall trends and correlations. 
