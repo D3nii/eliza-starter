@@ -29,6 +29,7 @@ import { dynoPlugin } from "./plugins/Dyno/src/index.ts";
 import { telebugPlugin } from "./plugins/Telebug/src/index.ts";
 import { quantfasePlugin } from "./plugins/Quantfase/src/index.ts";
 import { videoExplainPlugin } from "./plugins/VideoExplain/src/index.ts";
+import { disexplainPlugin } from "./plugins/DisExplain/src/index.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,13 +70,15 @@ export function createAgent(
       dynoPlugin,
       telebugPlugin,
       quantfasePlugin,
-      videoExplainPlugin
+      videoExplainPlugin,
+      disexplainPlugin
     ].filter(Boolean),
     providers: [],
     actions: [],
     services: [],
     managers: [],
     cacheManager: cache,
+    logging: true,
   });
 
   return agentRuntime;
