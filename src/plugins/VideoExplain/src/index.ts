@@ -1,110 +1,78 @@
-import { IAgentRuntime, elizaLogger, generateText, composeContext, ModelClass } from "@elizaos/core";
+import { IAgentRuntime, generateText, composeContext, ModelClass } from "@elizaos/core";
 import { YoutubeTranscript } from 'youtube-transcript';
 import OpenAI from "openai";
+// import fs from "fs";
 
 // Prompt for the video explain plugin
-// const PROMPT = `
-// You are a seasoned cryptocurrency expert and market analyst with deep knowledge of blockchain, tokens, and market trends. Your task is to analyze the transcript of a video where various traders discuss specific cryptocurrencies or tokens. The transcript might cover multiple projects and include detailed opinions, price targets, concerns, and other market insights.
-
-// Your analysis should follow this structured format for each token mentioned:
-
-// 1. **Token Name**  
-//    - Identify the token or project being discussed (e.g., Bitcoin, Ethereum, etc.).
-
-// 2. **General Thoughts and Sentiments**  
-//    - Summarize the overall sentiment expressed by the traders (e.g., bullish, bearish, neutral).
-//    - Include qualitative insights about the token’s technology, market positioning, and future potential.
-//    - Note any contrasting opinions if traders provide divergent views.
-
-// 3. **Price Targets and Predictions**  
-//    - Extract all price targets mentioned by traders. For each price target, provide:
-//      - The specific price value (or range) mentioned.
-//      - The context or timeframe if given (e.g., short-term, long-term).
-//      - Any reasoning or supporting evidence provided (e.g., technical analysis, historical performance).
-//    - If multiple price targets are mentioned, list them in order, noting which trader said what if identifiable.
-//    - Break down any related technical analysis (e.g., resistance levels, support levels, moving averages) that might be mentioned.
-
-// 4. **Areas of Concern and Risks**  
-//    - Identify any risks, concerns, or warnings discussed regarding the token.
-//    - Summarize specific issues such as market volatility, regulatory concerns, project-specific risks, or external factors.
-//    - Include potential scenarios discussed by traders (e.g., what might cause a price drop or increased uncertainty).
-
-// 5. **Additional Context and Observations**  
-//    - Note any extra details that could be relevant, such as news events, changes in market sentiment, technological updates, or macroeconomic factors.
-//    - If the transcript includes comparisons to other tokens or broader market trends, summarize those points.
-
-// 6. **Edge Cases and Ambiguities**  
-//    - If a token is mentioned in passing or if multiple tokens are discussed in one segment, ensure that the analysis clearly separates them.
-//    - For ambiguous or incomplete statements, indicate the uncertainty and list any assumptions you are making.
-//    - If price targets or technical details are not explicitly clear, use contextual clues to provide the best possible interpretation, and note where details are missing.
-
-// 7. **Output Format**  
-//    - Your final response should be clearly formatted using headings and bullet points for each section.
-//    - Ensure that each token is processed in its own dedicated section.
-//    - If the transcript does not mention any specific token or if some sections are missing, explicitly state “Not mentioned” or “Data insufficient” for those parts.
-
-// **Instructions for Processing the Transcript:**
-
-// - Begin by reading the entire transcript to identify all the tokens or projects mentioned.
-// - For each identified token, go through the transcript and extract information relevant to the above sections.
-// - Handle multiple speakers by attributing different opinions when possible, and note if a single speaker’s analysis differs across segments.
-// - In cases of conflicting data, list all viewpoints and note that opinions vary.
-// - Finally, present your analysis in a clear, structured format so that someone with minimal crypto background can understand the key insights quickly.
-
-// **Example Output Structure:**
-
-// Token: Bitcoin
-// General Thoughts:
-// Predominantly bullish sentiment with discussions on its long-term potential.
-// Some traders noted its dominance as a store of value.
-
-// Price Targets:
-// Price Target 1: $70,000 (short-term rally expectation based on technical analysis).
-// Price Target 2: $90,000 (long-term view factoring in halving effects and institutional interest).
-
-// Comments: One trader mentioned resistance levels at $65,000, while another focused on support levels near $55,000.
-
-// Areas of Concern:
-// Regulatory uncertainties in major markets.
-// Concerns over potential market corrections after reaching historical highs.
-
-// Additional Context:
-// Mention of macroeconomic trends such as inflation and global economic slowdown.
-// Comparison to previous bull cycles and discussions on miner behavior.
-
-// Edge Cases/Assumptions:
-// Some segments mentioned “crypto” generally without specifying Bitcoin; these were omitted unless context confirmed it was about Bitcoin.
-
-// Here is the transcript:
-// {{transcript}}
-// `;
 const PROMPT = `
-You're a Crypto expert. Struturize the following and be as DETAILED, AND TECHNICAL as POSSIBLE, and return in markdown format:
-Here is the transcript:
-{{transcript}}
+You're a Crypto expert. 
+
+Structurize the following and be as DETAILED, AND TECHNICAL as POSSIBLE. 
+Please get the name from the channel name and use it to explain. "name" says this, "name" explains, "name" thinks, in views of "name", etc.
+Don't include Introduction/Overview and Conclusions. I DON'T NEED THEM. DON'T INCLUDE THEM.
+
+And return in markdown format, don't include \`\`\` or "markdown" in the response.
+
+The user might ask you for a specific aspect of the video. You should explain that specific aspect in detail, in addition to the overall summary.
 `;
 
-const customOpenAILLM = async (transcript: string) => {
+const customOpenAILLM = async (transcript: string, userMessage: string) => {
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "o3-mini",
     messages: [
       {
-        "role": "system",
-        "content": PROMPT.replace("{{transcript}}", "")
+        "role": "developer",
+        "content": [
+          {
+            "type": "text",
+            "text": PROMPT
+          }
+        ]
       },
       {
         "role": "user",
-        "content": transcript
+        "content": [
+          {
+            "type": "text",
+            "text": userMessage
+          }
+        ]
       },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": transcript
+          }
+        ]
+      }
     ],
+    response_format: {
+      "type": "text"
+    },
+    reasoning_effort: "high"
   });
   
   return response.choices[0].message.content;
 };
+
+// Function to get channel name using oembed
+async function getChannelName(videoUrl: string): Promise<string> {
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
+    const response = await fetch(oembedUrl);
+    const data = await response.json();
+    return data.author_name
+  } catch (error) {
+    console.error("Error fetching video info:", error);
+    return "Unknown"
+  }
+}
 
 // Create the video explanation plugin
 export const videoExplainPlugin = {
@@ -113,15 +81,15 @@ export const videoExplainPlugin = {
   actions: [
     {
       name: "EXPLAIN_VIDEO",
-      // Make pattern more flexible to catch common typos
-      pattern: /(?:explain\s+(?:this\s+)?(?:v[ie]d(?:eo)?))\s+(?:to\s+me\s+)?(.+)/i,
+      // Updated pattern to match videxplain
+      pattern: /videxplain/i,
       description: "Explains the content of a YouTube video",
       examples: [
         [
           {
             role: "user1",
             content: {
-              text: "explain this video to me https://www.youtube.com/watch?v=example"
+              text: "videxplain https://www.youtube.com/watch?v=example"
             }
           },
           {
@@ -133,39 +101,34 @@ export const videoExplainPlugin = {
         ]
       ],
       validate: async (runtime: IAgentRuntime, message: any, state: any) => {
-        elizaLogger.log("VideoExplain: Validating request...");
-        
-        // Check if message contains a URL-like string
-        const match = message.content.text.match(/(?:explain\s+(?:this\s+)?(?:v[ie]d(?:eo)?))\s+(?:to\s+me\s+)?(.+)/i);
-        if (!match) {
-          elizaLogger.warn("VideoExplain: Validation failed - No URL found in message");
+        // Extract URL from message
+        const urlMatch = message.content.text.match(/https?:\/\/[^\s]+/);
+        if (!urlMatch) {
           return false;
         }
 
-        const url = match[1].trim();
+        const url = urlMatch[0].trim();
         
         // Basic URL validation
         try {
           new URL(url);
-          elizaLogger.log("VideoExplain: URL validation passed");
           return true;
         } catch (e) {
-          elizaLogger.warn("VideoExplain: Validation failed - Invalid URL format");
           return false;
         }
       },
       handler: async (runtime: IAgentRuntime, message: any, state: any, options: any, callback: (response: any) => void) => {
         try {
-          elizaLogger.log("VideoExplain: Processing new request...");
+          console.log("VideoExplain: Processing new request...");
           
-          const match = message.content.text.match(/(?:explain\s+(?:this\s+)?(?:v[ie]d(?:eo)?))\s+(?:to\s+me\s+)?(.+)/i);
-          if (!match) {
-            elizaLogger.warn("VideoExplain: No URL provided in the request");
+          const urlMatch = message.content.text.match(/https?:\/\/[^\s]+/);
+          if (!urlMatch) {
+            console.warn("VideoExplain: No URL provided in the request");
             callback({ text: "Please provide a valid YouTube URL" });
             return;
           }
 
-          let videoUrl = match[1].trim();
+          let videoUrl = urlMatch[0].trim();
           let videoId;
           
           try {
@@ -180,12 +143,15 @@ export const videoExplainPlugin = {
               throw new Error('Could not extract video ID');
             }
             
-            elizaLogger.log(`VideoExplain: Processing video ID: ${videoId}`);
+            console.log(`VideoExplain: Processing video ID: ${videoId}`);
           } catch (e) {
             callback({ text: "Please provide a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)" });
             return;
           }
 
+          // Get video info including channel name
+          const channelName = await getChannelName(videoUrl);
+          
           const transcript = await YoutubeTranscript.fetchTranscript(videoId);
           if (!transcript || transcript.length === 0) {
             callback({ text: "Sorry, I couldn't find a transcript for this video. The video might not have captions available." });
@@ -197,14 +163,45 @@ export const videoExplainPlugin = {
             .map(entry => entry.text)
             .join(' ');
 
-          // Generate AI summary
-          elizaLogger.log("VideoExplain: Generating AI summary...");
-          const summary = await customOpenAILLM(formattedTranscript);
+          const response = `Channel: ${channelName}\n\nHere is the transcript:${formattedTranscript}`;
 
-          callback({ text: summary });
-          elizaLogger.success("VideoExplain: Request completed successfully");
+          // fs.writeFileSync("video_transcript.md", response);
+
+          // Extract the prompt by removing the disexplain prefix and channel ID
+          let prompt = message.content.text
+            .toLowerCase()
+            .replace(/^videxplain\s+/i, '') // Remove prefix
+            .replace(/<#\d+>/, '') // Remove channel ID
+            .replace(/\s+\d+[hdwm]\s*$/, '') // Remove time if present
+            .replace(/https?:\/\/[^\s]+/g, '') // Remove URL
+            .trim();
+
+          // Generate AI summary using the user's message
+          console.log("VideoExplain: Generating AI summary...");
+          const summary = await customOpenAILLM(response, prompt);
+
+          // Save complete summary to file
+          // fs.writeFileSync("video_explanation.md", summary);
+          // console.log("VideoExplain: Summary saved to video_explanation.md");
+
+          // Split summary into sections and send with delays
+          const sections = summary.split(/(?=###\s)/);
+          console.log(`VideoExplain: Split summary into ${sections.length} sections`);
+          
+          // Send first section immediately
+          console.log("VideoExplain: Sending first section immediately");
+          callback({ text: sections[0] });
+          
+          // Send remaining sections with delays
+          for (let i = 1; i < sections.length; i++) {
+            setTimeout(() => {
+              callback({ text: sections[i] });
+            }, i * 3000); // 3 second delay between each section
+          }
+
+          console.log("VideoExplain: Request completed successfully");
         } catch (error) {
-          elizaLogger.error("VideoExplain: Error processing video:", error);
+          console.error("VideoExplain: Error processing video:", error);
           
           let errorMessage = "Sorry, I encountered an error while processing the video.\n";
           errorMessage += "Please check if:\n";
@@ -221,6 +218,6 @@ export const videoExplainPlugin = {
 };
 
 // Log when the plugin is loaded
-elizaLogger.log("VideoExplain plugin loaded successfully");
+console.log("VideoExplain plugin loaded successfully");
 
 export default videoExplainPlugin; 
