@@ -67,11 +67,11 @@ export class CustomAutoClient {
       return 24; // Default to 24 hours on first run
     }
     
-    // Get current time in PT
-    const now = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
-    const ptDate = new Date(now);
+    // Get current time in PT using consistent timezone handling
+    const ptNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+    const ptLastRun = new Date(pluginState.lastRunTime.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
     
-    const diffMs = ptDate.getTime() - pluginState.lastRunTime.getTime();
+    const diffMs = ptNow.getTime() - ptLastRun.getTime();
     return Math.round(diffMs / (1000 * 60 * 60));
   }
 
