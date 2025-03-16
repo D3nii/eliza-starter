@@ -50,6 +50,9 @@ importers:
       '@elizaos/plugin-starknet':
         specifier: 0.25.6-alpha.1
         version: 0.25.6-alpha.1(@google-cloud/vertexai@1.9.2)(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(@langchain/groq@0.1.3(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@types/node@20.17.24)(axios@1.8.2)(ethers@6.13.5(bufferutil@4.0.9)(utf-8-validate@5.0.10))(jsdom@25.0.1(bufferutil@4.0.9)(canvas@2.11.2)(utf-8-validate@5.0.10))(postcss@8.5.3)(qs@6.14.0)(react@19.0.0)(typescript@5.6.3)(whatwg-url@14.1.1)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(yaml@2.7.0)(zod@3.24.2)
+      '@elizaos/plugin-web-search':
+        specifier: 0.25.6-alpha.1
+        version: 0.25.6-alpha.1(@google-cloud/vertexai@1.9.2)(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(@langchain/groq@0.1.3(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(axios@1.8.2)(postcss@8.5.3)(react@19.0.0)(typescript@5.6.3)(whatwg-url@14.1.1)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(yaml@2.7.0)(zod@3.24.2)
       '@tavily/core':
         specifier: 0.0.2
         version: 0.0.2
@@ -870,6 +873,11 @@ packages:
 
   '@elizaos/plugin-trustdb@0.25.6-alpha.1':
     resolution: {integrity: sha512-RIDGMBdAPvT+XyRiOLtfSIBHM5Ynnoy66DWDBFeMtBbxCW3UHqsKjTn7BnvOoWPfltwDj1vFqbhwT1sOQ/P3xg==}
+    peerDependencies:
+      whatwg-url: 7.1.0
+
+  '@elizaos/plugin-web-search@0.25.6-alpha.1':
+    resolution: {integrity: sha512-5vPFjohyVeVESVOrhXCNWitSEXti08UQzIiv+knAHkxH5d9F6B+0lKTPSD7dGvrIv4c1zKtqEDPfihu17om+RQ==}
     peerDependencies:
       whatwg-url: 7.1.0
 
@@ -10825,6 +10833,43 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+      - tsx
+      - typeorm
+      - typescript
+      - ws
+      - yaml
+      - zod
+
+  '@elizaos/plugin-web-search@0.25.6-alpha.1(@google-cloud/vertexai@1.9.2)(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(@langchain/groq@0.1.3(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(axios@1.8.2)(postcss@8.5.3)(react@19.0.0)(typescript@5.6.3)(whatwg-url@14.1.1)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(yaml@2.7.0)(zod@3.24.2)':
+    dependencies:
+      '@elizaos/core': 0.25.6-alpha.1(@google-cloud/vertexai@1.9.2)(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(@langchain/groq@0.1.3(@langchain/core@0.3.42(openai@4.87.3(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(axios@1.8.2)(react@19.0.0)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)
+      '@tavily/core': 0.0.2
+      js-tiktoken: 1.0.15
+      tsup: 8.3.5(postcss@8.5.3)(typescript@5.6.3)(yaml@2.7.0)
+      whatwg-url: 14.1.1
+    transitivePeerDependencies:
+      - '@google-cloud/vertexai'
+      - '@langchain/anthropic'
+      - '@langchain/aws'
+      - '@langchain/cohere'
+      - '@langchain/core'
+      - '@langchain/google-genai'
+      - '@langchain/google-vertexai'
+      - '@langchain/groq'
+      - '@langchain/mistralai'
+      - '@langchain/ollama'
+      - '@microsoft/api-extractor'
+      - '@swc/core'
+      - aws-crt
+      - axios
+      - cheerio
+      - debug
+      - encoding
+      - jiti
+      - peggy
+      - postcss
+      - react
+      - supports-color
       - tsx
       - typeorm
       - typescript
