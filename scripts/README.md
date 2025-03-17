@@ -71,3 +71,53 @@ File naming format:
 - If channels show "Invalid Discord channel", check that your bot has access to those channels
 - If message content is empty but embeds/attachments exist, ensure your bot has the proper intents enabled
 - For other issues, check the Discord.js documentation 
+
+## test-dynamic-webhook.js
+
+Tests the dynamic Discord webhook functionality. This script demonstrates how to use the `sendDynamicWebhookMessage` function to dynamically create and use webhooks for Discord channels.
+
+### Setup
+
+Create a `.env` file in the project root with your Discord bot token:
+
+```
+DISCORD_API_TOKEN=your_discord_bot_token_here
+```
+
+The bot token needs to have permissions to manage webhooks in the target channel.
+
+### Usage
+
+```bash
+node scripts/test-dynamic-webhook.js <channelId> <message>
+```
+
+Example:
+```bash
+node scripts/test-dynamic-webhook.js 123456789012345678 "Hello, this is a test message!"
+```
+
+### Features
+- Dynamically creates a webhook in the specified channel if one doesn't exist
+- Reuses existing webhooks created by the bot
+- Sends messages with customizable sender name and avatar
+- Handles message chunking for long messages
+- Supports sending to threads within channels
+- Provides fine-grained control over allowed mentions
+- Implements proper error handling for Discord API responses
+
+### Advanced Options
+
+The script supports all options from the Discord Webhook API, including:
+
+- `threadId`: Send messages to a specific thread in the channel
+- `allowedMentions`: Control what mentions are parsed in the message
+- `embeds`: Add rich embeds to your messages
+- `components`: Add interactive components like buttons
+
+### API Reference
+
+This implementation follows the official Discord API documentation:
+- [Get Channel Webhooks](https://discord.com/developers/docs/resources/webhook#get-channel-webhooks)
+- [Create Webhook](https://discord.com/developers/docs/resources/webhook#create-webhook)
+- [Execute Webhook](https://discord.com/developers/docs/resources/webhook#execute-webhook) 

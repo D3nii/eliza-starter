@@ -1,6 +1,7 @@
 import { IAgentRuntime, generateText, composeContext, ModelClass } from "@elizaos/core";
 import { YoutubeTranscript } from 'youtube-transcript';
 import OpenAI from "openai";
+import { sendWebhookMessage } from "../../shared/discordWebhook.js";
 // import fs from "fs";
 
 // Prompt for the video explain plugin
@@ -180,26 +181,15 @@ export const videoExplainPlugin = {
           console.log("VideoExplain: Generating AI summary...");
           const summary = await customOpenAILLM(response, prompt);
 
+          console.log("VideoExplain: Sending webhook message...");
+          sendWebhookMessage("videos", "ElizaOS", summary);
+
           // Save complete summary to file
           // fs.writeFileSync("video_explanation.md", summary);
           // console.log("VideoExplain: Summary saved to video_explanation.md");
 
-          // Split summary into sections and send with delays
-          const sections = summary.split(/(?=###\s)/);
-          console.log(`VideoExplain: Split summary into ${sections.length} sections`);
-          
-          // Send first section immediately
-          console.log("VideoExplain: Sending first section immediately");
-          callback({ text: sections[0] });
-          
-          // Send remaining sections with delays
-          for (let i = 1; i < sections.length; i++) {
-            setTimeout(() => {
-              callback({ text: sections[i] });
-            }, i * 3000); // 3 second delay between each section
-          }
-
           console.log("VideoExplain: Request completed successfully");
+          return summary;
         } catch (error) {
           console.error("VideoExplain: Error processing video:", error);
           

@@ -31,6 +31,10 @@ const webhookMap = {
     "test-3": {
         url: "https://discord.com/api/webhooks/1350648523883941959/aOK0UFTgNi1Cw8oDJD-o84feO4DniactTnLDt4ug6d8GmwQtOpmNE6ruhQDvmgGcPl-A",
         name: 'test-3'
+    },
+    "videos": {
+        url: "https://discord.com/api/webhooks/1351201976255512687/D78Cux3FW7PZHTSU5rpRr63mJpnlF-zF1037lv73_1XuQBTs7YIpAeRJqGgG8wnIdrCG",
+        name: 'video-explain'
     }
 };
 
@@ -147,8 +151,109 @@ export function getAvailableWebhooks() {
     return available;
 }
 
+/**
+ * Dynamically manages webhooks for a Discord channel and sends messages
+ * @param {string} channelId - The Discord channel ID to send message to
+ * @param {string} senderName - Name to display as the message sender
+ * @param {string} message - Content of the message to send
+ * @param {string} botToken - Discord bot token with webhook management permissions
+ * @param {Object} options - Additional options for the webhook message
+ * @param {string} [options.avatarUrl] - URL for the webhook avatar
+ * @param {string} [options.applicationId] - Application ID to identify webhooks
+ * @param {string} [options.threadId] - Thread ID to send message to (if targeting a thread)
+ * @param {Object} [options.allowedMentions] - Controls what mentions are parsed
+ * @returns {Promise<Object[]>} - Array of response objects from the webhook
+ */
+export async function sendDynamicWebhookMessage(channelId, senderName, message, botToken, options = {}) {
+    if (!channelId || !botToken) {
+        console.error('Channel ID and bot token are required for dynamic webhooks');
+        return [];
+    }
+
+    try {
+        // Get existing webhooks for the channel
+        const webhooksResponse = await axios.get(
+            `https://discord.com/api/v10/channels/${channelId}/webhooks`,
+            {
+                headers: {
+                    'Authorization': `Bot ${botToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        let webhook;
+        const webhooks = webhooksResponse.data;
+
+        // Look for an existing webhook created by our bot
+        webhook = webhooks.find(hook =>
+            hook.name === 'ElizaOS Dynamic Webhook' &&
+            hook.application_id === (options.applicationId || 'ElizaOS')
+        );
+
+        // Create a new webhook if none exists
+        if (!webhook) {
+            const createResponse = await axios.post(
+                `https://discord.com/api/v10/channels/${channelId}/webhooks`,
+                {
+                    name: 'ElizaOS Dynamic Webhook',
+                    avatar: options.avatarUrl // Avatar provided during webhook creation
+                },
+                {
+                    headers: {
+                        'Authorization': `Bot ${botToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            webhook = createResponse.data;
+        }
+
+        // Now send the message using the webhook
+        const MAX_MESSAGE_LENGTH = 2000;
+        const messageChunks = splitMessage(message, MAX_MESSAGE_LENGTH);
+        const responses = [];
+
+        // Send each chunk as a separate message
+        for (const chunk of messageChunks) {
+            if (chunk.trim().length === 0) continue;
+
+            const webhookData = {
+                content: chunk,
+                username: senderName || 'ElizaOS Bot',
+                avatar_url: options.avatarUrl,
+                allowed_mentions: options.allowedMentions, // Control what mentions are parsed
+                thread_id: options.threadId, // Support for sending to threads
+                ...options
+            };
+
+            // Clean up options object to avoid duplicate parameters
+            delete webhookData.avatarUrl;
+            delete webhookData.applicationId;
+            delete webhookData.allowedMentions;
+            delete webhookData.threadId;
+
+            // Build webhook URL, adding thread_id as a query parameter if specified
+            let webhookUrl = `https://discord.com/api/webhooks/${webhook.id}/${webhook.token}`;
+
+            // Use the webhook URL with token
+            const response = await axios.post(webhookUrl, webhookData);
+            responses.push(response.data);
+        }
+
+        return responses;
+    } catch (error) {
+        console.error(`Error with dynamic webhook for channel ${channelId}:`, error.message);
+        if (error.response) {
+            console.error(`Status: ${error.response.status}, Message: ${JSON.stringify(error.response.data)}`);
+        }
+        return [];
+    }
+}
+
 export default {
     sendWebhookMessage,
     getAvailableWebhooks,
+    sendDynamicWebhookMessage,
     webhookMap
 }; 
