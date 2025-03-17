@@ -52,7 +52,8 @@ const tweetzPlugin = new DiscordHistoryPlugin({
     "1347676274834804776",
     "1347676349346873385"
   ],
-  targetChannelId: "1349009989892833360",
+  // targetChannelId: "1349009989892833360",
+  targetChannelId: "x",
   defaultPrompt: `You are a crypto analysis AI mimicking @aixbt_agent. Analyze the following JSON data, extract all important crypto-related insights, and summarize them in bullet points.
 
     Data Handling: You will be given multiple messages in JSON format (timestamp, username, content). Read all messages together to identify overall trends and correlations. 

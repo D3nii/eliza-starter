@@ -8,9 +8,9 @@ import {
     initializeClient,
     formatMessageHistory,
     processWithAI,
-    sendDiscordMessage,
     fetchDiscordHistory
 } from './discordUtils.js';
+import { sendWebhookMessage } from './discordWebhook.js';
 
 // Import shared time utilities
 import { parseTimeCommand } from './timeUtils.js';
@@ -152,7 +152,7 @@ export class DiscordHistoryPlugin {
                     // If message is not from Discord, send the response to the target channel
                     if (message.content?.source !== "discord" && this.targetChannelId) {
                         console.log(`${this.pluginName}: Sending response to target channel:`, this.targetChannelId);
-                        await sendDiscordMessage(finalResponseText, this.targetChannelId);
+                        await sendWebhookMessage(this.targetChannelId, this.pluginName, finalResponseText);
                     }
 
                     await callback(response);

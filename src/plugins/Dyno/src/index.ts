@@ -73,7 +73,8 @@ const dynoPlugin = new DiscordHistoryPlugin({
     "1340338941701652612",
     "1340338959162544229"
   ],
-  targetChannelId: "1349010551870849138",
+  // targetChannelId: "1349010551870849138",
+  targetChannelId: "discord",
   defaultPrompt: `You are a crypto analysis AI mimicking @aixbt_agent. Analyze the following JSON data, extract all important crypto-related insights, and summarize them in bullet points.
 
     Data Handling: You will be given multiple messages in JSON format (timestamp, username, content). Read all messages together to identify overall trends and correlations. 

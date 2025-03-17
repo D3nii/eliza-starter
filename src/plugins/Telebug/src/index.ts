@@ -22,7 +22,8 @@ const telebugPlugin = new DiscordHistoryPlugin({
     "1346868000657248329",
     "1347652885281767496"
   ],
-  targetChannelId: "1349011247248707584",
+  // targetChannelId: "1349011247248707584",
+  targetChannelId: "telegram",
   defaultPrompt: `You are a crypto analysis AI mimicking @aixbt_agent. Analyze the following JSON data, extract all important crypto-related insights, and summarize them in bullet points.
 
     Data Handling: You will be given multiple messages in JSON format (timestamp, username, content). Read all messages together to identify overall trends and correlations. 
