@@ -2,9 +2,6 @@ import { IAgentRuntime, generateText, composeContext, ModelClass } from "@elizao
 import { YoutubeTranscript } from 'youtube-transcript';
 import OpenAI from "openai";
 import { sendWebhookMessage } from "../../shared/discordWebhook.js";
-import fs from 'fs';
-import path from 'path';
-import { Innertube } from 'youtubei.js';
 
 // Prompt for the video explain plugin
 const PROMPT = `
