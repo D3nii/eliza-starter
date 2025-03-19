@@ -131,13 +131,27 @@ export const videoExplainPlugin = {
         }
       },
       handler: async (runtime: IAgentRuntime, message: any, state: any, options: any, callback: (response: any) => void) => {
+        // Extract message ID from URL
+        let messageId = null;
+        if (message.content && message.content.url) {
+          const messageUrl = message.content.url;
+          messageId = messageUrl.split("/").pop();
+          console.log(`VideoExplain: Extracted message ID from URL: ${messageId}`);
+        } else if (message.id) {
+          messageId = message.id;
+          console.log(`VideoExplain: Using direct message ID: ${messageId}`);
+        }
+        
         try {
           console.log("VideoExplain: Processing new request...");
           
           const urlMatch = message.content.text.match(/https?:\/\/[^\s]+/);
           if (!urlMatch) {
             console.warn("VideoExplain: No URL provided in the request");
-            callback({ text: "Please provide a valid YouTube URL" });
+            callback({ 
+              text: "Please provide a valid YouTube URL",
+              
+            });
             return;
           }
 
@@ -178,7 +192,10 @@ export const videoExplainPlugin = {
             console.log(`VideoExplain: Processing video ID: ${videoId}`);
           } catch (e) {
             console.error("VideoExplain: Error processing video:", e);
-            callback({ text: "Please provide a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)" });
+            callback({ 
+              text: "Please provide a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)",
+              
+            });
             return;
           }
 
@@ -187,7 +204,10 @@ export const videoExplainPlugin = {
           
           const transcript = await getVideoTranscript(videoId);
           if (!transcript || transcript.length === 0) {
-            callback({ text: "Sorry, I couldn't find a transcript for this video. The video might not have captions available." });
+            callback({ 
+              text: "Sorry, I couldn't find a transcript for this video. The video might not have captions available.",
+              
+            });
             return;
           }
 
@@ -216,12 +236,16 @@ export const videoExplainPlugin = {
           console.log("VideoExplain: Sending webhook message...");
           sendWebhookMessage("videos", "ElizaOS", summary);
 
+          // Return the summary as a reply to the original message
+          callback({text: summary});
+
           // Save complete summary to file
           // fs.writeFileSync("video_explanation.md", summary);
           // console.log("VideoExplain: Summary saved to video_explanation.md");
 
           console.log("VideoExplain: Request completed successfully");
-          return summary;
+          // Return is not needed since we already called the callback
+          return;
         } catch (error) {
           console.error("VideoExplain: Error processing video:", error);
           
