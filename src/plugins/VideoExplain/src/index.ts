@@ -2,7 +2,9 @@ import { IAgentRuntime, generateText, composeContext, ModelClass } from "@elizao
 import { YoutubeTranscript } from 'youtube-transcript';
 import OpenAI from "openai";
 import { sendWebhookMessage } from "../../shared/discordWebhook.js";
-// import fs from "fs";
+import fs from 'fs';
+import path from 'path';
+import { Innertube } from 'youtubei.js';
 
 // Prompt for the video explain plugin
 const PROMPT = `
@@ -75,6 +77,19 @@ async function getChannelName(videoUrl: string): Promise<string> {
   }
 }
 
+// Function to get the video transcript
+async function getVideoTranscript(videoId: string): Promise<any> {
+  try {
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    
+    return transcript;
+  } catch (error) {
+    console.error("Error fetching video transcript:", error);
+    
+    return "Sorry, I couldn't find a transcript for this video and failed to download the audio for transcription.";
+  }
+}
+
 // Create the video explanation plugin
 export const videoExplainPlugin = {
   name: "VideoExplain",
@@ -137,15 +152,35 @@ export const videoExplainPlugin = {
             if (url.hostname.includes('youtu.be')) {
               videoId = url.pathname.split('/')[1];
             } else if (url.hostname.includes('youtube.com')) {
+              // Handle standard watch URLs
               videoId = url.searchParams.get('v');
+              
+              // Handle live URLs (youtube.com/live/VIDEO_ID)
+              if (!videoId && url.pathname.includes('/live/')) {
+                videoId = url.pathname.split('/live/')[1].split('/')[0];
+              }
+              
+              // Handle shortened URLs without v parameter (youtube.com/shorts/VIDEO_ID)
+              if (!videoId && url.pathname.includes('/shorts/')) {
+                videoId = url.pathname.split('/shorts/')[1].split('/')[0];
+              }
+              
+              // Handle embed URLs (youtube.com/embed/VIDEO_ID)
+              if (!videoId && url.pathname.includes('/embed/')) {
+                videoId = url.pathname.split('/embed/')[1].split('/')[0];
+              }
             }
             
             if (!videoId) {
               throw new Error('Could not extract video ID');
             }
             
+            // Construct a standard YouTube URL format for consistency
+            videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            
             console.log(`VideoExplain: Processing video ID: ${videoId}`);
           } catch (e) {
+            console.error("VideoExplain: Error processing video:", e);
             callback({ text: "Please provide a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)" });
             return;
           }
@@ -153,7 +188,7 @@ export const videoExplainPlugin = {
           // Get video info including channel name
           const channelName = await getChannelName(videoUrl);
           
-          const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+          const transcript = await getVideoTranscript(videoId);
           if (!transcript || transcript.length === 0) {
             callback({ text: "Sorry, I couldn't find a transcript for this video. The video might not have captions available." });
             return;
