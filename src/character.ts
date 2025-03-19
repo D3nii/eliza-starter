@@ -6,22 +6,22 @@ export const character: Character = {
     // "plugins": [ webSearchPlugin ],
     "plugins": [],
     "clients": [ Clients.AUTO, Clients.DISCORD ],   
-    // "clients": [ Clients.AUTO ],   
     "clientConfig": {
         "discord": {
-            "allowedChannelIds": [
-                "1345062755245490196", // Layer 1 - Phase 3
-                "1345157213123121182", // pinescript-testing
-                "1348697263177859143", // bm1-private-eliza
-                "1349009989892833360", // layer-1-summary-x
-                "1349010551870849138", // layer-1-summary-discord
-                "1349011247248707584", // layer-1-summary-telegram
-                "1349108063650451487", // layer-1-summary-indicators
-                "1347623717798150265", // videos
-                "1344635965695594527", // test1
-                "1344636004518072362",// test2
-                "1344636031281922068"// test3
-            ],
+            // "allowedChannelIds": [
+                // "1345062755245490196", // Layer 1 - Phase 3
+                // "1345157213123121182", // pinescript-testing
+                // "1348697263177859143", // bm1-private-eliza
+                // "1349009989892833360", // layer-1-summary-x
+                // "1349010551870849138", // layer-1-summary-discord
+                // "1349011247248707584", // layer-1-summary-telegram
+                // "1349108063650451487", // layer-1-summary-indicators
+                // "1347623717798150265", // videos
+                // "1344635965695594527", // test1
+                // "1344636004518072362", // test2
+                // "1344636031281922068", // test3
+                // "1351231689615216730" // test for main server
+            // ],
             "shouldIgnoreBotMessages": true,
             "shouldRespondOnlyToMentions": true,
         }
