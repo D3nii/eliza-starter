@@ -5,6 +5,13 @@
 
 // For making HTTP requests to webhook URLs
 import axios from 'axios';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
+
+// Get Discord bot token from environment variable
+const BOT_TOKEN = process.env.DISCORD_API_TOKEN_FOR_DYNAMIC_WEBHOOK;
 
 /**
  * Mapping of channel numbers to webhook information
@@ -52,7 +59,7 @@ function splitMessage(content, maxLength = 2000) {
     let currentChunk = '';
 
     // Split by newlines first to preserve formatting when possible
-    const lines = content.split('\n');
+    const lines = content.includes('\`\`\`') ? content.split('\`\`\`') : content.split('\n');
 
     for (const line of lines) {
         // If the line itself is too long, split it
@@ -156,7 +163,7 @@ export function getAvailableWebhooks() {
  * @param {string} channelId - The Discord channel ID to send message to
  * @param {string} senderName - Name to display as the message sender
  * @param {string} message - Content of the message to send
- * @param {string} botToken - Discord bot token with webhook management permissions
+ * @param {string} BOT_TOKEN - Discord bot token with webhook management permissions
  * @param {Object} options - Additional options for the webhook message
  * @param {string} [options.avatarUrl] - URL for the webhook avatar
  * @param {string} [options.applicationId] - Application ID to identify webhooks
@@ -164,8 +171,8 @@ export function getAvailableWebhooks() {
  * @param {Object} [options.allowedMentions] - Controls what mentions are parsed
  * @returns {Promise<Object[]>} - Array of response objects from the webhook
  */
-export async function sendDynamicWebhookMessage(channelId, senderName, message, botToken, options = {}) {
-    if (!channelId || !botToken) {
+export async function sendDynamicWebhookMessage(channelId, senderName, message, options = {}) {
+    if (!channelId || !BOT_TOKEN) {
         console.error('Channel ID and bot token are required for dynamic webhooks');
         return [];
     }
@@ -176,77 +183,65 @@ export async function sendDynamicWebhookMessage(channelId, senderName, message, 
             `https://discord.com/api/v10/channels/${channelId}/webhooks`,
             {
                 headers: {
-                    'Authorization': `Bot ${botToken}`,
+                    'Authorization': `Bot ${BOT_TOKEN}`,
                     'Content-Type': 'application/json'
                 }
             }
         );
 
-        let webhook;
+        let webhookInfo;
         const webhooks = webhooksResponse.data;
 
         // Look for an existing webhook created by our bot
-        webhook = webhooks.find(hook =>
-            hook.name === 'ElizaOS Dynamic Webhook' &&
-            hook.application_id === (options.applicationId || 'ElizaOS')
+        webhookInfo = webhooks.find(hook =>
+            hook.name === senderName
         );
 
         // Create a new webhook if none exists
-        if (!webhook) {
+        if (!webhookInfo) {
             const createResponse = await axios.post(
                 `https://discord.com/api/v10/channels/${channelId}/webhooks`,
                 {
-                    name: 'ElizaOS Dynamic Webhook',
+                    name: senderName,
                     avatar: options.avatarUrl // Avatar provided during webhook creation
                 },
                 {
                     headers: {
-                        'Authorization': `Bot ${botToken}`,
+                        'Authorization': `Bot ${BOT_TOKEN}`,
                         'Content-Type': 'application/json'
                     }
                 }
             );
-            webhook = createResponse.data;
+            webhookInfo = createResponse.data;
         }
 
-        // Now send the message using the webhook
-        const MAX_MESSAGE_LENGTH = 2000;
-        const messageChunks = splitMessage(message, MAX_MESSAGE_LENGTH);
-        const responses = [];
+        try {
+            // Split message if needed
+            const MAX_MESSAGE_LENGTH = 2000;
+            const messageChunks = splitMessage(message, MAX_MESSAGE_LENGTH);
+            const responses = [];
 
-        // Send each chunk as a separate message
-        for (const chunk of messageChunks) {
-            if (chunk.trim().length === 0) continue;
+            // Send each chunk as a separate message
+            for (const chunk of messageChunks) {
+                if (chunk.trim().length === 0) continue;
 
-            const webhookData = {
-                content: chunk,
-                username: senderName || 'ElizaOS Bot',
-                avatar_url: options.avatarUrl,
-                allowed_mentions: options.allowedMentions, // Control what mentions are parsed
-                thread_id: options.threadId, // Support for sending to threads
-                ...options
-            };
+                const webhookData = {
+                    content: chunk,
+                    username: senderName || 'ElizaOS Bot',
+                    ...options
+                };
 
-            // Clean up options object to avoid duplicate parameters
-            delete webhookData.avatarUrl;
-            delete webhookData.applicationId;
-            delete webhookData.allowedMentions;
-            delete webhookData.threadId;
+                const response = await axios.post(webhookInfo.url, webhookData);
+                responses.push(response.data);
+            }
 
-            // Build webhook URL, adding thread_id as a query parameter if specified
-            let webhookUrl = `https://discord.com/api/webhooks/${webhook.id}/${webhook.token}`;
-
-            // Use the webhook URL with token
-            const response = await axios.post(webhookUrl, webhookData);
-            responses.push(response.data);
+            return responses;
+        } catch (error) {
+            console.error(`Error sending webhook message to ${webhookInfo.name}:`, error);
+            return [];
         }
-
-        return responses;
     } catch (error) {
-        console.error(`Error with dynamic webhook for channel ${channelId}:`, error.message);
-        if (error.response) {
-            console.error(`Status: ${error.response.status}, Message: ${JSON.stringify(error.response.data)}`);
-        }
+        console.error('Error creating or sending webhook message:', error);
         return [];
     }
 }

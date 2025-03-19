@@ -1,6 +1,8 @@
 import { parseTimeCommand } from '../../shared/timeUtils.js';
 import { fetchDiscordHistory, formatMessageHistory, processWithAI } from '../../shared/discordUtils.js';
 import { IAgentRuntime } from '@elizaos/core';
+import { sendDynamicWebhookMessage } from '../../shared/discordWebhook.js';
+import fs from 'fs';
 
 export const disexplainPlugin = {
     name: "Disexplain",
@@ -34,33 +36,20 @@ export const disexplainPlugin = {
                     }
         
                     const text = message.content.text;
-                    console.log("Validating text:", text);
                     
                     // Just check if it starts with disexplain and has a channel ID
                     const hasDisexplain = text.toLowerCase().includes('disexplain');
                     const hasChannelId = text.match(/<#\d+>/);
                     
-                    console.log("Validation result:", { hasDisexplain, hasChannelId });
                     return hasDisexplain && hasChannelId;
                 } catch (error) {
                     console.error(`Error in DISEXPLAIN_CHANNEL validate:`, error);
                     return false;
                 }
             },
-        
             handler: async (runtime: IAgentRuntime, message: any, state: any, options: any, callback: any) => {
                 try {
                     console.log(`*** DISEXPLAIN_CHANNEL handler triggered ***`);
-                    console.log("Message content:", message.content?.text);
-        
-                    // Send initial response
-                    const initialResponse = {
-                        text: `Processing your request to analyze the channel... This might take a moment.`,
-                        action: `DISEXPLAIN_CHANNEL_RESPONSE`,
-                        source: message.content?.source || "unknown"
-                    };
-        
-                    await callback(initialResponse);
         
                     const text = message.content.text;
                     
@@ -98,8 +87,10 @@ export const disexplainPlugin = {
                     );
 
                     const formattedMessages = formatMessageHistory(messages);
-        
                     console.log(`Fetched ${formattedMessages.length} messages from channel`);
+
+                    // save the formatted messages to a file
+                    // fs.writeFileSync('formattedMessages.json', JSON.stringify(formattedMessages, null, 2));
         
                     // Process with AI using the user's prompt
                     const aiPrompt = `Analyze the following Discord conversation and answer this question: ${prompt}\n\nHere are the messages from the last ${time.display}:\n\n{{messages}}`;
@@ -109,17 +100,21 @@ export const disexplainPlugin = {
                         runtime,
                         aiPrompt
                     );
-        
-                    // Prepare the final response
-                    const response = {
-                        text: `# Channel Analysis (${time.display})\n\n${analysis}`,
+
+                    // Send the final response
+                    sendDynamicWebhookMessage(channelId, "DisExplain", analysis);
+                    console.log("Sent response to channel", channelId);
+
+                    // Send the response to the source channel
+                    const successResponse = {
+                        text: `Analysis complete. Sent to channel <#${channelId}>`,
                         action: `DISEXPLAIN_CHANNEL_RESPONSE`,
                         source: message.content?.source || "unknown"
                     };
-        
-                    await callback(response);
-                    return response;
-        
+
+                    callback(successResponse);
+
+                    return analysis;
                 } catch (error) {
                     console.error(`Error in DISEXPLAIN_CHANNEL handler:`, error);
         
