@@ -481,5 +481,111 @@ export async function fetchDiscordHistory(message, hours, channelId, runtime, ma
     }
 }
 
+/**
+ * Create a thread from a message (if not exists) and send a message to it
+ * @param {string} messageId - The ID of the message to create/find thread from
+ * @param {string} channelId - The ID of the channel where the message is
+ * @param {string} threadName - Name for the thread (if creating new thread)
+ * @param {string|Object} content - The message content to send
+ * @param {Object} [options] - Additional options
+ * @param {boolean} [options.createIfNotExist=true] - Create thread if doesn't exist
+ * @param {Array} [options.files] - Optional array of file attachments
+ * @returns {Promise<Object>} - Object containing thread and sent message
+ */
+export async function sendMessageToThread(messageId, channelId, threadName, content, options = {}) {
+    const { createIfNotExist = true, files = null } = options;
+
+    // Ensure client is ready
+    if (!isClientReady) {
+        try {
+            await initializeClient();
+        } catch (error) {
+            console.error('Failed to initialize Discord client:', error);
+            return { success: false, error: 'Failed to initialize Discord client' };
+        }
+    }
+
+    try {
+        // Get the channel
+        const channel = await client.channels.fetch(channelId);
+        if (!channel) {
+            return { success: false, error: `Channel ${channelId} not found` };
+        }
+
+        // Get the message to create thread from
+        const message = await channel.messages.fetch(messageId);
+        if (!message) {
+            return { success: false, error: `Message ${messageId} not found in channel ${channelId}` };
+        }
+
+        // Check if there's already a thread for this message
+        let thread = message.thread;
+
+        // If no thread exists and we should create one
+        if (!thread && createIfNotExist) {
+            try {
+                // Create a new thread from the message
+                thread = await message.startThread({
+                    name: threadName || `Thread for message ${messageId.slice(0, 8)}`,
+                    autoArchiveDuration: 1440, // Auto-archive after 24 hours (1440 minutes)
+                });
+                console.log(`Created new thread: ${thread.name} (${thread.id})`);
+            } catch (threadError) {
+                console.error('Failed to create thread:', threadError);
+                return { success: false, error: `Failed to create thread: ${threadError.message}` };
+            }
+        } else if (!thread) {
+            return { success: false, error: 'No thread exists for this message and creation not requested' };
+        }
+
+        // Now send the message to the thread
+        const MAX_MESSAGE_LENGTH = 2000;
+        const messageText = typeof content === 'object' ? content.text || '' : content;
+        const messages = splitMessage(messageText, MAX_MESSAGE_LENGTH);
+        const sentMessages = [];
+
+        // Send each chunk as a separate message
+        for (let i = 0; i < messages.length; i++) {
+            const messageContent = messages[i];
+            if (messageContent.trim().length > 0 || (i === messages.length - 1 && files)) {
+                const messageOptions = {
+                    content: messageContent.trim(),
+                    allowedMentions: { parse: ['users', 'roles'], repliedUser: true, everyone: false },
+                };
+
+                // Add files to the last message chunk
+                if (i === messages.length - 1 && files) {
+                    messageOptions.files = files;
+                }
+
+                const sentMessage = await thread.send(messageOptions);
+                sentMessages.push(sentMessage);
+            }
+        }
+
+        return {
+            success: true,
+            thread,
+            messages: sentMessages
+        };
+
+    } catch (error) {
+        console.error('Error sending message to thread:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Export the client for direct access if needed
-export const discordClient = client; 
+export const discordClient = client;
+
+// Default export with all utility functions
+export default {
+    initializeClient,
+    formatMessageHistory,
+    processWithAI,
+    fetchDiscordHistory,
+    sendDiscordMessage,
+    splitMessage,
+    discordClient,
+    sendMessageToThread
+}; 

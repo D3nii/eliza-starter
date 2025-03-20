@@ -1,7 +1,13 @@
 import { IAgentRuntime, generateText, composeContext, ModelClass } from "@elizaos/core";
 import { YoutubeTranscript } from 'youtube-transcript';
 import OpenAI from "openai";
-import { sendWebhookMessage } from "../../shared/discordWebhook.js";
+import { sendMessageToThread } from "../../shared/discordUtils.js";
+
+// Whitelisted channels
+const WHITELISTED_CHANNELS = [
+  "2dc3302d-9ff9-0541-9c44-b88332d718e0", // test
+  "64a596dd-7568-09dd-9384-d3a36c540f1e" // videos
+];
 
 // Prompt for the video explain plugin
 const PROMPT = `
@@ -55,7 +61,8 @@ const customOpenAILLM = async (transcript: string, userMessage: string) => {
     response_format: {
       "type": "text"
     },
-    reasoning_effort: "high"
+    reasoning_effort: "high",
+    max_completion_tokens: 20000
   });
   
   return response.choices[0].message.content;
@@ -114,14 +121,21 @@ export const videoExplainPlugin = {
         ]
       ],
       validate: async (runtime: IAgentRuntime, message: any, state: any) => {
-        // Extract URL from message
-        const urlMatch = message.content.text.match(/https?:\/\/[^\s]+/);
+        // Check if the message is from whitelisted channels
+        let isWhitelistedRoom = WHITELISTED_CHANNELS.includes(message.roomId);
+        if (!isWhitelistedRoom) {
+          // Check if message has "videxplain" in it
+          let hasVidexplain = message.content.text.toLowerCase().includes("videxplain");
+          if (!hasVidexplain) return false;
+        }
+
+        // Extract URL from message, can be http or https
+        const urlMatch = message.content.text.match(/http:\/\/[^\s]+|https:\/\/[^\s]+/);
         if (!urlMatch) {
           return false;
         }
-
         const url = urlMatch[0].trim();
-        
+
         // Basic URL validation
         try {
           new URL(url);
@@ -132,30 +146,20 @@ export const videoExplainPlugin = {
       },
       handler: async (runtime: IAgentRuntime, message: any, state: any, options: any, callback: (response: any) => void) => {
         // Extract message ID from URL
-        let messageId = null;
-        if (message.content && message.content.url) {
-          const messageUrl = message.content.url;
-          messageId = messageUrl.split("/").pop();
-          console.log(`VideoExplain: Extracted message ID from URL: ${messageId}`);
-        } else if (message.id) {
-          messageId = message.id;
-          console.log(`VideoExplain: Using direct message ID: ${messageId}`);
-        }
-        
-        try {
-          console.log("VideoExplain: Processing new request...");
-          
-          const urlMatch = message.content.text.match(/https?:\/\/[^\s]+/);
-          if (!urlMatch) {
-            console.warn("VideoExplain: No URL provided in the request");
-            callback({ 
-              text: "Please provide a valid YouTube URL",
-              
-            });
-            return;
-          }
+        let messageUrl = message.content.url;
+        let messageId = messageUrl.split("/").at(-1);
+        let channelId = messageUrl.split("/").at(-2);
+        let channelName;
 
+        // Check if the message is from discord
+        let isDiscordMessage = message.content.source == "discord";
+
+        try {
+          // Get video info including channel name
+          const urlMatch = message.content.text.match(/http:\/\/[^\s]+|https:\/\/[^\s]+/);
           let videoUrl = urlMatch[0].trim();
+
+          channelName = await getChannelName(videoUrl);
           let videoId;
           
           try {
@@ -188,37 +192,43 @@ export const videoExplainPlugin = {
             
             // Construct a standard YouTube URL format for consistency
             videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-            
-            console.log(`VideoExplain: Processing video ID: ${videoId}`);
           } catch (e) {
-            console.error("VideoExplain: Error processing video:", e);
-            callback({ 
-              text: "Please provide a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)",
-              
-            });
+            let text = "Please provide a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)";
+            if (isDiscordMessage) {
+              sendMessageToThread(messageId, channelId, channelName, text);
+            } else {
+              callback({ 
+                text: text,
+              });
+            }
             return;
           }
-
-          // Get video info including channel name
-          const channelName = await getChannelName(videoUrl);
           
           const transcript = await getVideoTranscript(videoId);
           if (!transcript || transcript.length === 0) {
-            callback({ 
-              text: "Sorry, I couldn't find a transcript for this video. The video might not have captions available.",
-              
-            });
+            let text = "Sorry, I couldn't find a transcript for this video. The video might not have captions available.";
+            if (isDiscordMessage) {
+              sendMessageToThread(messageId, channelId, channelName, text);
+            } else {
+              callback({ 
+                text: text,
+              });
+            }
             return;
+          }
+
+          let text = `Analyzing the video. Please give me a moment.`;
+          if (isDiscordMessage) {
+            sendMessageToThread(messageId, channelId, channelName, text);
+          } else {
+            callback({ text: text });
           }
 
           // Format the transcript into a readable text
           const formattedTranscript = transcript
             .map(entry => entry.text)
             .join(' ');
-
           const response = `Channel: ${channelName}\n\nHere is the transcript:${formattedTranscript}`;
-
-          // fs.writeFileSync("video_transcript.md", response);
 
           // Extract the prompt by removing the disexplain prefix and channel ID
           let prompt = message.content.text
@@ -230,40 +240,36 @@ export const videoExplainPlugin = {
             .trim();
 
           // Generate AI summary using the user's message
-          console.log("VideoExplain: Generating AI summary...");
           const summary = await customOpenAILLM(response, prompt);
 
-          console.log("VideoExplain: Sending webhook message...");
-          sendWebhookMessage("videos", "ElizaOS", summary);
-
           // Return the summary as a reply to the original message
-          callback({text: summary});
+          if (isDiscordMessage) {
+            sendMessageToThread(messageId, channelId, channelName, summary);
+          } else {
+            callback({ text: summary });
+          }
 
           // Save complete summary to file
           // fs.writeFileSync("video_explanation.md", summary);
           // console.log("VideoExplain: Summary saved to video_explanation.md");
-
-          console.log("VideoExplain: Request completed successfully");
-          // Return is not needed since we already called the callback
-          return;
+          return summary;
         } catch (error) {
-          console.error("VideoExplain: Error processing video:", error);
-          
           let errorMessage = "Sorry, I encountered an error while processing the video.\n";
-          errorMessage += "Please check if:\n";
-          errorMessage += "1. The video URL is correct and accessible\n";
-          errorMessage += "2. The video has captions/subtitles available\n";
-          errorMessage += "3. The video is not private or age-restricted";
+          if (error.includes("transcript.map")) {
+            errorMessage += "The video might not have captions available.\n";
+          } else 
+            errorMessage += "\nerror: " + error;
           
-          callback({ text: errorMessage });
+          if (isDiscordMessage) {
+            sendMessageToThread(messageId, channelId, channelName, errorMessage);
+          } else {
+            callback({ text: errorMessage });
+          }
         }
       }
     }
   ],
   evaluators: []
 };
-
-// Log when the plugin is loaded
-console.log("VideoExplain plugin loaded successfully");
 
 export default videoExplainPlugin; 
