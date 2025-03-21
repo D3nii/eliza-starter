@@ -1,4 +1,4 @@
-import { IAgentRuntime, generateText, composeContext, ModelClass } from "@elizaos/core";
+import { IAgentRuntime } from "@elizaos/core";
 import { YoutubeTranscript } from 'youtube-transcript';
 import OpenAI from "openai";
 import { sendMessageToThread } from "../../shared/discordUtils.js";
@@ -90,7 +90,7 @@ async function getVideoTranscript(videoId: string): Promise<any> {
   } catch (error) {
     console.error("Error fetching video transcript:", error);
     
-    return "Sorry, I couldn't find a transcript for this video and failed to download the audio for transcription.";
+    throw new Error("Sorry, I couldn't find a transcript for this video and failed to download the audio for transcription.");
   }
 }
 
@@ -102,7 +102,7 @@ export const videoExplainPlugin = {
     {
       name: "EXPLAIN_VIDEO",
       // Updated pattern to match videxplain
-      pattern: /videxplain/i,
+      // pattern: /videxplain/i,
       description: "Explains the content of a YouTube video",
       examples: [
         [
@@ -123,11 +123,14 @@ export const videoExplainPlugin = {
       validate: async (runtime: IAgentRuntime, message: any, state: any) => {
         // Check if the message is from whitelisted channels
         let isWhitelistedRoom = WHITELISTED_CHANNELS.includes(message.roomId);
+
         if (!isWhitelistedRoom) {
           // Check if message has "videxplain" in it
           let hasVidexplain = message.content.text.toLowerCase().includes("videxplain");
           if (!hasVidexplain) return false;
         }
+
+        return true;
 
         // Extract URL from message, can be http or https
         const urlMatch = message.content.text.match(/http:\/\/[^\s]+|https:\/\/[^\s]+/);
@@ -157,6 +160,12 @@ export const videoExplainPlugin = {
         try {
           // Get video info including channel name
           const urlMatch = message.content.text.match(/http:\/\/[^\s]+|https:\/\/[^\s]+/);
+
+          // if urlMatch is null, return
+          if (!urlMatch) {
+            return;
+          }
+
           let videoUrl = urlMatch[0].trim();
 
           channelName = await getChannelName(videoUrl);
@@ -252,10 +261,10 @@ export const videoExplainPlugin = {
           // Save complete summary to file
           // fs.writeFileSync("video_explanation.md", summary);
           // console.log("VideoExplain: Summary saved to video_explanation.md");
-          return summary;
+          return;
         } catch (error) {
           let errorMessage = "Sorry, I encountered an error while processing the video.\n";
-          if (error.includes("transcript.map")) {
+          if (error?.message?.includes("failed to download")) {
             errorMessage += "The video might not have captions available.\n";
           } else 
             errorMessage += "\nerror: " + error;
