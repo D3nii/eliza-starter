@@ -4,6 +4,8 @@ import { IAgentRuntime } from '@elizaos/core';
 import { sendDynamicWebhookMessage } from '../../shared/discordWebhook.js';
 import fs from 'fs';
 
+const webhookUrl = "https://discord.com/api/webhooks/1354512172058677380/VNhA6UD3VrYooxs3zY6sqAZ8QMXDPSH7fSom-KwU7Gc-fKh5wRy2SFKyxhljq2q_zZgD";
+
 export const disexplainPlugin = {
     name: "Disexplain",
     description: "Analyzes Discord channel history based on a specific prompt",
@@ -49,6 +51,12 @@ export const disexplainPlugin = {
             },
             handler: async (runtime: IAgentRuntime, message: any, state: any, options: any, callback: any) => {
                 try {
+                    callback({
+                        text: "On it...",
+                        action: `DISEXPLAIN_CHANNEL_RESPONSE`,
+                        source: message.content?.source || "unknown"
+                    });
+
                     console.log(`*** DISEXPLAIN_CHANNEL handler triggered ***`);
         
                     const text = message.content.text;
@@ -102,19 +110,20 @@ export const disexplainPlugin = {
                     );
 
                     // Send the final response
-                    sendDynamicWebhookMessage(channelId, "DisExplain", analysis);
+                    sendDynamicWebhookMessage(webhookUrl, "DisExplain", analysis, true);
                     console.log("Sent response to channel", channelId);
 
                     // Send the response to the source channel
-                    const successResponse = {
-                        text: `Analysis complete. Sent to channel <#${channelId}>`,
-                        action: `DISEXPLAIN_CHANNEL_RESPONSE`,
-                        source: message.content?.source || "unknown"
-                    };
+                    // const successResponse = {
+                    //     text: `Analysis complete. Sent to channel <#${channelId}>`,
+                    //     action: `DISEXPLAIN_CHANNEL_RESPONSE`,
+                    //     source: message.content?.source || "unknown"
+                    // };
 
-                    callback(successResponse);
+                    // callback(successResponse);
 
-                    return analysis;
+                    // return analysis;
+                    return;
                 } catch (error) {
                     console.error(`Error in DISEXPLAIN_CHANNEL handler:`, error);
         

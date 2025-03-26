@@ -171,40 +171,23 @@ export function getAvailableWebhooks() {
  * @param {Object} [options.allowedMentions] - Controls what mentions are parsed
  * @returns {Promise<Object[]>} - Array of response objects from the webhook
  */
-export async function sendDynamicWebhookMessage(channelId, senderName, message, options = {}) {
+export async function sendDynamicWebhookMessage(channelId, senderName, message, is_webhook_url = false, options = {}) {
     if (!channelId || !BOT_TOKEN) {
         console.error('Channel ID and bot token are required for dynamic webhooks');
         return [];
     }
 
     try {
-        // Get existing webhooks for the channel
-        const webhooksResponse = await axios.get(
-            `https://discord.com/api/v10/channels/${channelId}/webhooks`,
-            {
-                headers: {
-                    'Authorization': `Bot ${BOT_TOKEN}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
         let webhookInfo;
-        const webhooks = webhooksResponse.data;
-
-        // Look for an existing webhook created by our bot
-        webhookInfo = webhooks.find(hook =>
-            hook.name === senderName
-        );
-
-        // Create a new webhook if none exists
-        if (!webhookInfo) {
-            const createResponse = await axios.post(
+        if (is_webhook_url) {
+            webhookInfo = {
+                url: channelId,
+                name: senderName
+            };
+        } else {
+            // Get existing webhooks for the channel
+            const webhooksResponse = await axios.get(
                 `https://discord.com/api/v10/channels/${channelId}/webhooks`,
-                {
-                    name: senderName,
-                    avatar: options.avatarUrl // Avatar provided during webhook creation
-                },
                 {
                     headers: {
                         'Authorization': `Bot ${BOT_TOKEN}`,
@@ -212,7 +195,31 @@ export async function sendDynamicWebhookMessage(channelId, senderName, message, 
                     }
                 }
             );
-            webhookInfo = createResponse.data;
+
+            const webhooks = webhooksResponse.data;
+
+            // Look for an existing webhook created by our bot
+            webhookInfo = webhooks.find(hook =>
+                hook.name === senderName
+            );
+
+            // Create a new webhook if none exists
+            if (!webhookInfo) {
+                const createResponse = await axios.post(
+                    `https://discord.com/api/v10/channels/${channelId}/webhooks`,
+                    {
+                        name: senderName,
+                        avatar: options.avatarUrl // Avatar provided during webhook creation
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bot ${BOT_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                webhookInfo = createResponse.data;
+            }
         }
 
         try {

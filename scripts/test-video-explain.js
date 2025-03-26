@@ -241,6 +241,14 @@ async function runTests() {
 }
 
 // Run the tests
-runTests()
-    .then(() => console.log("\n🎉 Test completed!"))
-    .catch(error => console.error("\n❌ Test failed with error:", error)); 
+// runTests()
+//     .then(() => console.log("\n🎉 Test completed!"))
+//     .catch(error => console.error("\n❌ Test failed with error:", error)); 
+
+
+async function lol() {
+    const transcript = await getVideoTranscript('s4KCzszCi4U');
+    console.log(transcript);
+}
+
+lol();

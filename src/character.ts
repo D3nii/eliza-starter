@@ -16,7 +16,8 @@ export const character: Character = {
                 "1349011247248707584", // layer-1-summary-telegram
                 "1349108063650451487", // layer-1-summary-indicators
                 "1347623717798150265", // videos
-                "1351231689615216730" // test for main server
+                "1351231689615216730", // test for main server
+                "1354512129264455730" // disexplain
             ],
             // "shouldRespondOnlyToMentions": true,
         }

@@ -71,7 +71,7 @@ export function createAgent(
       telebugPlugin,
       quantfasePlugin,
       videoExplainPlugin,
-      disexplainPlugin
+      disexplainPlugin,
     ].filter(Boolean),
     providers: [],
     actions: [],
